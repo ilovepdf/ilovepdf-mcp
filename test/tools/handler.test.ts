@@ -229,6 +229,54 @@ describe('makeHandler — arity (TOOL-4)', () => {
     expect(uploadIntoSharedTask).not.toHaveBeenCalled();
     expect(execute).not.toHaveBeenCalled();
   });
+
+  it('image-to-pdf with 1 source → reaches upload and execute (NOT a VALIDATION_ERROR)', async () => {
+    // image-to-pdf accepts one or more images (minSources=1, unbounded max).
+    // A single image must NOT be rejected by cardinality enforcement.
+    const { p, size } = writeFixture('solo.png', 1024);
+    vi.mocked(buildResult).mockResolvedValue({
+      content: [{ type: 'text', text: 'Converted 1 image to PDF.' }],
+      structuredContent: {
+        operation: 'image-to-pdf',
+        status: 'completed',
+        input: { sources: [p], count: 1, totalBytes: size },
+        output: { path: path.join(work, 'solo-imagepdf.pdf'), download_url: 'https://x/y', bytes: 20, fileCount: 1 },
+        metrics: { inputBytes: size, outputBytes: 20, ratio: 0.02, durationMs: 1 },
+      },
+    });
+
+    const handler = makeHandler(specFor('image-to-pdf'));
+    const res = await handler({ sources: [p] });
+
+    // Single-image path must succeed — cardinality must NOT block it.
+    expect(res.isError).toBeUndefined();
+    // image-to-pdf is a requiresSharedTask operation regardless of source count.
+    expect(uploadIntoSharedTask).toHaveBeenCalledTimes(1);
+    expect(uploadFiles).not.toHaveBeenCalled();
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('image-to-pdf with 2 sources → reaches upload and execute (multi-image path)', async () => {
+    const a = writeFixture('img-a.png', 512);
+    const b = writeFixture('img-b.png', 512);
+    vi.mocked(buildResult).mockResolvedValue({
+      content: [{ type: 'text', text: 'Converted 2 images to PDF.' }],
+      structuredContent: {
+        operation: 'image-to-pdf',
+        status: 'completed',
+        input: { sources: [a.p, b.p], count: 2, totalBytes: a.size + b.size },
+        output: { path: path.join(work, 'out.pdf'), download_url: 'https://x/y', bytes: 10, fileCount: 1 },
+        metrics: { inputBytes: a.size + b.size, outputBytes: 10, ratio: 0.01, durationMs: 1 },
+      },
+    });
+
+    const handler = makeHandler(specFor('image-to-pdf'));
+    const res = await handler({ sources: [a.p, b.p] });
+
+    expect(res.isError).toBeUndefined();
+    expect(uploadIntoSharedTask).toHaveBeenCalledTimes(1);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

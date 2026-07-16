@@ -167,7 +167,24 @@ Before any log line is emitted, `audit-logger.ts` applies three redaction passes
 
 ---
 
-## 5. Accepted v1 residuals
+## 5. `unlock` operation — password delegation note
+
+The `unlock` operation does NOT validate the supplied `password` locally. The
+password value is forwarded as-is in the `/process` body to iLovePDF, which
+performs the actual decryption check. The iLovePDF `unlock` tool removes
+**owner/permission restrictions** (print lock, copy lock, etc.) from a PDF
+regardless of whether an open-password (user password) is present. If the PDF has
+no open-password, iLovePDF unlocks it without needing a correct password. If a
+user (open) password is set, the correct password must be supplied or iLovePDF
+will return an error that surfaces as `UPSTREAM_ERROR`.
+
+**Implication:** callers should not rely on this server to validate or reject
+incorrect passwords before the API call. Validation is entirely delegated to and
+enforced by iLovePDF.
+
+---
+
+## 6. Accepted v1 residuals
 
 The following items were evaluated in the verify phase and accepted as tracked, non-blocking residuals for v1. They are recorded here for transparency.
 

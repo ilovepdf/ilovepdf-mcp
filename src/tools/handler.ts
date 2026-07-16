@@ -7,7 +7,8 @@
  * parsed tool input.
  *
  * Pipeline (per design §3.3):
- *   1. assertCardinality  — shared-task ops need ≥2 sources; all others exactly 1
+ *   1. assertCardinality  — enforces per-operation source cardinality using
+ *                           op.minSources / op.maxSources from the registry
  *                           (TOOL-4). A violation is a VALIDATION_ERROR.
  *   2. loadAllowlist      — resolve the deny-by-default file-io allowlist (§5).
  *   3. requireEnv (LAZY)  — resolve ILOVEPDF_PUBLIC_KEY inside the handler, not at
@@ -124,28 +125,40 @@ interface ResolvedInput {
 // ---------------------------------------------------------------------------
 
 /**
- * Enforce per-operation arity. Shared-task ops (merge-pdf, image-to-pdf) need
- * at least two sources; all others require exactly one. A second source for a
- * single-file op is a `VALIDATION_ERROR` rather than a silently dropped file.
+ * Enforce per-operation source cardinality using the registry's `minSources` and
+ * `maxSources` fields (TOOL-4). A count outside the valid range is a
+ * `VALIDATION_ERROR`; violations are rejected before any upload work.
+ *
+ * Convention (mirrors operation-types.ts documentation):
+ *   min = op.minSources ?? 1
+ *   max = op.maxSources ?? (op.minSources !== undefined ? Infinity : 1)
+ *
+ * - Both fields omitted (single-file ops): min=1, max=1 — exactly 1 source.
+ * - minSources=1, maxSources omitted (image-to-pdf): min=1, max=Infinity.
+ * - minSources=2, maxSources omitted (merge-pdf): min=2, max=Infinity.
+ *
+ * Note: `requiresSharedTask` is an UPLOAD-STRATEGY flag (used at §3.3 step 8 to
+ * choose `uploadIntoSharedTask` vs `uploadFiles`). It is NOT used here for
+ * cardinality — the two concerns are decoupled.
  */
 function assertCardinality(op: OperationSpec, sources: string[]): void {
   const n = sources.length;
-  if (op.requiresSharedTask) {
-    if (n < 2) {
-      throw new ToolError(
-        'VALIDATION_ERROR',
-        `${op.name} requires at least 2 sources; received ${n}.`,
-        'This operation needs at least two input files.',
-        false
-      );
-    }
-    return;
-  }
-  if (n !== 1) {
+  const min = op.minSources ?? 1;
+  const max = op.maxSources ?? (op.minSources !== undefined ? Infinity : 1);
+
+  if (n < min) {
     throw new ToolError(
       'VALIDATION_ERROR',
-      `${op.name} requires exactly 1 source; received ${n}.`,
-      'This operation accepts exactly one input file.',
+      `${op.name} requires at least ${min} source${min === 1 ? '' : 's'}; received ${n}.`,
+      `This operation needs at least ${min} input file${min === 1 ? '' : 's'}.`,
+      false
+    );
+  }
+  if (n > max) {
+    throw new ToolError(
+      'VALIDATION_ERROR',
+      `${op.name} accepts at most ${max} source${max === 1 ? '' : 's'}; received ${n}.`,
+      `This operation accepts at most ${max} input file${max === 1 ? '' : 's'}.`,
       false
     );
   }

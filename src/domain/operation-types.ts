@@ -70,8 +70,29 @@ export interface OperationSpec {
   /** Default options merged with user-supplied options before /api/process */
   readonly defaultOptions: Readonly<Record<string, unknown>>;
   /**
+   * Minimum number of input sources required for this operation.
+   * When omitted, assertCardinality defaults to 1.
+   * Set to 2 for operations that require at least two inputs (e.g. merge-pdf).
+   * Set to 1 for operations that accept one or more inputs (e.g. image-to-pdf).
+   *
+   * Convention: omitting BOTH minSources and maxSources means exactly 1 source
+   * (single-file ops). When minSources is set and maxSources is omitted the
+   * upper limit is unbounded — assertCardinality treats it as Infinity.
+   */
+  readonly minSources?: number;
+  /**
+   * Maximum number of input sources accepted. When omitted AND minSources is set,
+   * the upper limit is unbounded (Infinity). When both fields are omitted the
+   * default is exactly 1 (min=1, max=1 for single-file ops).
+   *
+   * To cap at a specific number supply an explicit value (e.g. maxSources: 1).
+   */
+  readonly maxSources?: number;
+  /**
    * True when this operation needs all files uploaded into a SINGLE shared task
    * (merge-pdf, image-to-pdf) rather than a task per file.
+   * This is an UPLOAD-STRATEGY flag only — it does not imply a minimum source
+   * count. Cardinality is governed by minSources / maxSources instead.
    */
   readonly requiresSharedTask: boolean;
   /**

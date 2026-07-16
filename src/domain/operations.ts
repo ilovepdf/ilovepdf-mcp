@@ -59,7 +59,7 @@ export const OPERATIONS = {
     name: 'image-to-pdf',
     apiTool: 'imagepdf',
     label: 'Image to PDF',
-    description: 'Convert images (JPG, PNG, TIFF) to PDF.',
+    description: 'Convert one or more images (JPG, PNG, TIFF) into a single PDF.',
     acceptedExtensions: ['.jpg', '.jpeg', '.png', '.tif', '.tiff'],
     defaultOptions: {
       orientation: 'portrait',
@@ -67,6 +67,8 @@ export const OPERATIONS = {
       pagesize: 'fit',
       merge_after: true,
     },
+    // minSources=1, maxSources omitted → accepts one or more images (unbounded).
+    minSources: 1,
     requiresSharedTask: true,
     mustBeDirect: false,
     optionsSchema: OPTIONS_SCHEMAS['image-to-pdf'],
@@ -91,6 +93,8 @@ export const OPERATIONS = {
     description: 'Combine multiple PDF files into one.',
     acceptedExtensions: ['.pdf'],
     defaultOptions: {},
+    // minSources=2, maxSources omitted → requires at least two PDFs (unbounded max).
+    minSources: 2,
     requiresSharedTask: true,
     mustBeDirect: false,
     optionsSchema: OPTIONS_SCHEMAS['merge-pdf'],

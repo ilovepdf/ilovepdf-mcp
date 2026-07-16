@@ -150,6 +150,53 @@ describe('widget/legacy fields removed (OPS-7)', () => {
   });
 });
 
+describe('cardinality fields — minSources / maxSources (TOOL-4 decoupled)', () => {
+  /**
+   * Convention (documented in operation-types.ts):
+   *   min = op.minSources ?? 1
+   *   max = op.maxSources ?? (op.minSources !== undefined ? Infinity : 1)
+   *
+   * - Both fields omitted  → exactly 1 source (single-file ops)
+   * - minSources set, maxSources omitted → min≤sources≤Infinity (unbounded)
+   */
+  it('merge-pdf has minSources=2 and maxSources undefined (unbounded max)', () => {
+    expect(OPERATIONS['merge-pdf'].minSources).toBe(2);
+    expect(OPERATIONS['merge-pdf'].maxSources).toBeUndefined();
+  });
+
+  it('image-to-pdf has minSources=1 and maxSources undefined (unbounded max)', () => {
+    expect(OPERATIONS['image-to-pdf'].minSources).toBe(1);
+    expect(OPERATIONS['image-to-pdf'].maxSources).toBeUndefined();
+  });
+
+  it('all 8 single-file ops have both minSources and maxSources undefined (default exactly 1)', () => {
+    const singleFileOps = [
+      'compress-pdf',
+      'pdf-to-jpg',
+      'office-to-pdf',
+      'split-pdf',
+      'unlock',
+      'watermark',
+      'pagenumber',
+      'pdf-ocr',
+    ] as const;
+
+    for (const name of singleFileOps) {
+      expect(OPERATIONS[name].minSources, `minSources for "${name}"`).toBeUndefined();
+      expect(OPERATIONS[name].maxSources, `maxSources for "${name}"`).toBeUndefined();
+    }
+  });
+
+  it('requiresSharedTask remains an upload-strategy flag independent of cardinality', () => {
+    // image-to-pdf: requiresSharedTask=true AND minSources=1 (not 2) — these are decoupled.
+    expect(OPERATIONS['image-to-pdf'].requiresSharedTask).toBe(true);
+    expect(OPERATIONS['image-to-pdf'].minSources).toBe(1);
+    // merge-pdf: also requiresSharedTask=true AND minSources=2.
+    expect(OPERATIONS['merge-pdf'].requiresSharedTask).toBe(true);
+    expect(OPERATIONS['merge-pdf'].minSources).toBe(2);
+  });
+});
+
 describe('producesArchive SSOT flag (ZIP derivation — Fix 4)', () => {
   it('producesArchive is true ONLY for split-pdf and pdf-to-jpg', () => {
     for (const name of ALL_OPS) {
