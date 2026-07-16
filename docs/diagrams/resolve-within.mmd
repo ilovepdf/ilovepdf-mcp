@@ -1,0 +1,10 @@
+flowchart TD
+    start["input path"] --> empty{empty / NUL?}
+    empty -->|yes| deny["DENY → FILE_ACCESS_DENIED"]
+    empty -->|no| resolve["path.resolve(workdir, input)"]
+    resolve --> canon["canonicalize symlinks<br/>(read: file / write: parent)"]
+    canon --> exists{parent/file resolvable?}
+    exists -->|no| deny
+    exists -->|yes| contain{inside an allowed root?<br/>case-insensitive on Windows}
+    contain -->|no| deny
+    contain -->|yes| allow["ALLOW → read/write"]

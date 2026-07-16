@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+coverage
+sandbox
+
+# Local AI-dev tooling (not project deliverables)
+.claude/
+.claude.json

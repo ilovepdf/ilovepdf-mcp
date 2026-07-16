@@ -1,0 +1,20 @@
+flowchart LR
+    classDef local fill:#eff6ff,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef server fill:#fff7ed,stroke:#ea580c,color:#7c2d12,stroke-width:2px;
+    classDef store fill:#f0fdf4,stroke:#16a34a,color:#14532d,stroke-width:1.5px;
+    classDef cloud fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
+
+    subgraph DEV["Developer machine &nbsp;·&nbsp; LOCAL"]
+        direction TB
+        client["<b>MCP Client</b><br/>Claude Desktop · Cursor · Cline<br/><i>launches the server as a child process</i>"]:::local
+        server["<b>@ilovepdf/mcp</b><br/>Node subprocess · started by <code>npx -y @ilovepdf/mcp</code><br/>holds ILOVEPDF_PUBLIC_KEY (from client env)"]:::server
+        files[("Local files<br/>allowlisted workdir")]:::store
+        client <==>|"MCP / JSON-RPC<br/>over stdio (stdin/stdout pipes)"| server
+        server <-->|"read inputs · write outputs<br/>(path allowlist)"| files
+    end
+
+    subgraph CLOUD["iLovePDF &nbsp;·&nbsp; CLOUD (the only remote component)"]
+        api["<b>iLovePDF REST API v1</b><br/>auth · upload · process · download<br/><i>the actual PDF processing happens here</i>"]:::cloud
+    end
+
+    server ==>|"HTTPS"| api

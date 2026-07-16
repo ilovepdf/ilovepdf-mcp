@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant C as MCP Client
+    participant H as handler.ts
+    participant F as file-io.ts
+    participant N as option-normalizer.ts
+    participant U as upload-service.ts
+    participant E as operation-executor.ts
+    participant A as iLovePDF API
+    participant R as result-builder.ts
+    C->>H: tool call {sources, output_path?, options?}
+    H->>H: assertCardinality(op, sources)
+    H->>F: loadAllowlist() + resolveSources (path→bytes / URL passthrough)
+    H->>H: requireEnv(ILOVEPDF_PUBLIC_KEY) (lazy, typed error if unset)
+    H->>H: validateInputs (ext + size)
+    H->>N: normalizeOptions(op, merged options) (DEC-2)
+    H->>U: uploadFiles / uploadIntoSharedTask
+    U->>A: auth → upload (re-auth-once + bad-node retry)
+    H->>E: execute(op, creds, options)
+    E->>A: process → returns download_url + sizes
+    H->>R: buildToolResult
+    R->>A: download produced file
+    R->>F: writeOutputFile (allowlist-validated)
+    R-->>H: {structuredContent, content(markdown)}
+    H-->>C: CallToolResult (or isError:true typed error on failure)

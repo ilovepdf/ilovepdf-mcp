@@ -1,0 +1,11 @@
+# Normalize line endings across platforms: LF in the repo, native on checkout.
+* text=auto eol=lf
+
+# Binary assets — never normalize.
+*.png binary
+*.pdf binary
+*.ttf binary
+*.ico binary
+
+# Lockfiles: keep diffs minimal / treat as generated.
+package-lock.json -diff linguist-generated=true

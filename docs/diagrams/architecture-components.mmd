@@ -1,0 +1,43 @@
+flowchart LR
+    classDef ext fill:#f1f5f9,stroke:#64748b,color:#0f172a,stroke-width:1.5px;
+    classDef client fill:#fef9c3,stroke:#ca8a04,color:#713f12,stroke-width:2px;
+    classDef transport fill:#fff7ed,stroke:#ea580c,color:#7c2d12,stroke-width:2px;
+    classDef builder fill:#faf5ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
+    classDef edge fill:#eff6ff,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef pkg fill:#f0fdf4,stroke:#16a34a,color:#14532d,stroke-width:1.5px;
+
+    subgraph CLIENT["MCP Client &nbsp;·&nbsp; external process"]
+        cli["Claude Desktop · Cursor<br/>Windsurf · Cline · generic<br/><i>launches server via npx</i>"]:::client
+    end
+
+    subgraph SERVER["@ilovepdf/mcp &nbsp;·&nbsp; server process (Node, stdio)"]
+        direction TB
+        idx["<b>index.ts</b> &nbsp;·&nbsp; transport<br/>stdout lockdown · connect(stdio) · shutdown<br/><i>the ONLY module that imports a transport</i>"]:::transport
+        srv["<b>server.ts</b> &nbsp;·&nbsp; builder (transport-agnostic)<br/>buildServer(): McpServer + registerAllTools()"]:::builder
+
+        subgraph EDGE["tools/ &nbsp;·&nbsp; edge — one tool per operation"]
+            direction LR
+            e1["register.ts"]:::edge
+            e2["handler.ts"]:::edge
+            e3["input-shape.ts · tool-name.ts · descriptions.ts"]:::edge
+        end
+
+        subgraph CORE["transport-agnostic core &nbsp;·&nbsp; must NOT import tools/, server.ts or any transport"]
+            direction LR
+            dom["<b>domain/</b><br/>operations (registry —<br/>single source of truth)<br/>operation-types · errors"]:::pkg
+            con["<b>contract/</b><br/>options · input · result<br/>schemas (Zod authoritative)"]:::pkg
+            cor["<b>core/</b><br/>ilovepdf-api · upload-service<br/>operation-executor · result-builder<br/>option-normalizer · auth-utils<br/>audit-logger → stderr"]:::pkg
+            lib["<b>lib/</b><br/>env · file-io (allowlist)<br/>file-validation · stdout-guard"]:::pkg
+        end
+
+        idx --> srv
+        srv --> EDGE
+        EDGE ==>|"composes"| CORE
+    end
+
+    FS[("Local filesystem<br/>allowlisted workdir")]:::ext
+    API[("iLovePDF REST API v1<br/>auth · upload · process · download")]:::ext
+
+    cli <==>|"MCP / JSON-RPC over stdio"| idx
+    lib <-->|"read inputs · write outputs"| FS
+    cor -->|"HTTPS"| API
