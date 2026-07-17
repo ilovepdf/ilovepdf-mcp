@@ -3,7 +3,7 @@
 Pre-release trial guide (before the package is published to npm).
 
 - **Version:** 0.1.0
-- **Branch:** `dev`
+- **Branch:** `staging`
 - **Transport:** local stdio MCP server (runs on your machine; no hosting, no ports)
 
 ## Prerequisites
@@ -18,7 +18,7 @@ Pre-release trial guide (before the package is published to npm).
 ```sh
 git clone https://github.com/ilovepdf/ilovepdf-mcp.git
 cd ilovepdf-mcp
-git checkout dev
+git checkout staging
 npm install
 npm run build          # compiles to dist/  (dist/index.js is the server)
 ```

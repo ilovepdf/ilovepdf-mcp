@@ -36,7 +36,7 @@ Until the package is published to npm, run it from the repository. See [`docs/QU
 
 ```sh
 git clone https://github.com/ilovepdf/ilovepdf-mcp.git
-cd ilovepdf-mcp && git checkout dev
+cd ilovepdf-mcp && git checkout staging
 npm install && npm run build     # produces dist/index.js
 ```
 
