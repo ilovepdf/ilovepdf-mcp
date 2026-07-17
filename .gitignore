@@ -7,3 +7,8 @@ sandbox
 # Local AI-dev tooling (not project deliverables)
 .claude/
 .claude.json
+
+# Internal working artifacts — not part of the published package
+CLAUDE.md
+openspec/
+docs/presentation/
