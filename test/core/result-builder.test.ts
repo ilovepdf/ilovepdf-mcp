@@ -185,7 +185,8 @@ describe('buildResult — markdown content + content layout (TOOL-7)', () => {
     expect(text).toContain(result.structuredContent.output.path);
   });
 
-  it('content array contains at least the text block and a resource_link', async () => {
+  it('content array contains at least the text block and a resource_link when embed is enabled', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
     setDownloadSize(512);
 
     const result = await buildResult({
@@ -478,8 +479,9 @@ describe('buildResult — overwrite protection (data-safety)', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildResult — embedded resource + resource_link', () => {
-  it('includes embedded resource blob for a small output (default 10 MB cap)', async () => {
-    // 2 KB is well under the 10 MB default cap — blob should be present.
+  it('includes embedded resource blob for a small output (default 10 MB cap) when embed is enabled', async () => {
+    // 2 KB is well under the 10 MB default cap — blob should be present when embed is on.
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
     setDownloadSize(2048);
 
     const result = await buildResult({
@@ -504,7 +506,8 @@ describe('buildResult — embedded resource + resource_link', () => {
     expect(decoded.byteLength).toBe(2048);
   });
 
-  it('embedded resource uses application/zip for multi-file (zip) outputs', async () => {
+  it('embedded resource uses application/zip for multi-file (zip) outputs when embed is enabled', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
     setDownloadSize(4096);
 
     const result = await buildResult({
@@ -523,7 +526,8 @@ describe('buildResult — embedded resource + resource_link', () => {
     expect(embedded!.resource.mimeType).toBe('application/zip');
   });
 
-  it('always includes a resource_link pointing to the output file', async () => {
+  it('includes a resource_link pointing to the output file when embed is enabled', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
     setDownloadSize(512);
 
     const result = await buildResult({
@@ -545,8 +549,9 @@ describe('buildResult — embedded resource + resource_link', () => {
     expect(link!.mimeType).toBe('application/pdf');
   });
 
-  it('omits the blob but keeps resource_link when output exceeds the cap', async () => {
-    // Set cap to 1 MB; download 2 MB → blob omitted.
+  it('omits the blob but keeps resource_link when output exceeds the cap (embed enabled)', async () => {
+    // Set cap to 1 MB; download 2 MB → blob omitted, resource_link still present.
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
     vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', '1');
     setDownloadSize(2 * 1024 * 1024); // 2 MB
 
@@ -565,7 +570,8 @@ describe('buildResult — embedded resource + resource_link', () => {
     expect(result.content.find(b => b.type === 'resource_link')).toBeDefined();
   });
 
-  it('omits the blob when cap is 0 (inline embedding disabled)', async () => {
+  it('omits the blob when cap is 0 (inline embedding disabled) but resource_link is still present when embed is on', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
     vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', '0');
     setDownloadSize(512);
 
@@ -609,6 +615,138 @@ describe('buildResult — embedded resource + resource_link', () => {
       startedAt: Date.now(),
     });
     expect(resultCapDisabled.content[0].type).toBe('text');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ILOVEPDF_MCP_EMBED_RESULT — opt-in embedded resource (Claude Desktop safety)
+// ---------------------------------------------------------------------------
+
+describe('buildResult — ILOVEPDF_MCP_EMBED_RESULT opt-in flag', () => {
+  it('DEFAULT (flag unset): content is text-only — no resource or resource_link (Claude Desktop safe)', async () => {
+    // No vi.stubEnv — default is off.
+    setDownloadSize(2048);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec({ output_filename: '' }),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 4096,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    // Exactly one content item: the text block.
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].type).toBe('text');
+    // No resource or resource_link — Claude Desktop guarantee.
+    expect(result.content.find(b => b.type === 'resource')).toBeUndefined();
+    expect(result.content.find(b => b.type === 'resource_link')).toBeUndefined();
+  });
+
+  it('EMBED_RESULT=true: appends resource blob AND resource_link after the text block', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
+    setDownloadSize(2048);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec({ output_filename: '' }),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 4096,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    expect(result.content[0].type).toBe('text');
+
+    const embedded = result.content.find(b => b.type === 'resource') as
+      | { type: 'resource'; resource: { uri: string; mimeType: string; blob: string } }
+      | undefined;
+    expect(embedded).toBeDefined();
+    expect(embedded!.resource.mimeType).toBe('application/pdf');
+    // Base64 decodes to the exact bytes written.
+    const decoded = Buffer.from(embedded!.resource.blob, 'base64');
+    expect(decoded.byteLength).toBe(2048);
+
+    expect(result.content.find(b => b.type === 'resource_link')).toBeDefined();
+  });
+
+  it('EMBED_RESULT=1: also enables embedded resource', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', '1');
+    setDownloadSize(512);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec({ output_filename: '' }),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 1024,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    expect(result.content.find(b => b.type === 'resource')).toBeDefined();
+    expect(result.content.find(b => b.type === 'resource_link')).toBeDefined();
+  });
+
+  it('EMBED_RESULT=true + output above cap: blob omitted, resource_link still present', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
+    vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', '1');
+    setDownloadSize(2 * 1024 * 1024); // 2 MB — above the 1 MB cap
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec({ output_filename: '' }),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 4 * 1024 * 1024,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    // Blob is omitted (exceeds cap).
+    expect(result.content.find(b => b.type === 'resource')).toBeUndefined();
+    // Resource link is still present when embed is enabled, even above the cap.
+    expect(result.content.find(b => b.type === 'resource_link')).toBeDefined();
+  });
+
+  it('EMBED_RESULT=true + cap=0: blob omitted, resource_link still present, text first', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
+    vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', '0');
+    setDownloadSize(512);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec({ output_filename: '' }),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 1024,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    // Blob is omitted when cap is 0.
+    expect(result.content.find(b => b.type === 'resource')).toBeUndefined();
+    // Resource link is still present (cap=0 only disables the blob, not the link).
+    expect(result.content.find(b => b.type === 'resource_link')).toBeDefined();
+    expect(result.content[0].type).toBe('text');
+  });
+
+  it('DEFAULT (flag unset) + large output: still text-only (cap applies only when embed is on)', async () => {
+    // Even if output is small (under any cap), the default strips resource and resource_link.
+    vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', '100');
+    setDownloadSize(512);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec({ output_filename: '' }),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 1024,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].type).toBe('text');
+    expect(result.content.find(b => b.type === 'resource')).toBeUndefined();
+    expect(result.content.find(b => b.type === 'resource_link')).toBeUndefined();
   });
 });
 
@@ -675,8 +813,9 @@ describe('buildResult — opt-in tokenized download URL (DEC-4 / Task 3)', () =>
 
   it('resource_link and embedded blob still use the local file:// URI regardless of flag', async () => {
     // The flag affects only structuredContent.output.download_url; content blocks
-    // always point to the local output file.
+    // always point to the local output file (when embed is enabled).
     vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', 'true');
+    vi.stubEnv('ILOVEPDF_MCP_EMBED_RESULT', 'true');
     setDownloadSize(512);
 
     const result = await buildResult({

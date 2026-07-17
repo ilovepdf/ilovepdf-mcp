@@ -162,15 +162,17 @@ When `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL=true`, the raw tokenized URL is returned 
 
 **Never enable in shared or multi-user environments.** The local `output.path` is always the authoritative result; the tokenized URL is a convenience for clients that cannot read the local file.
 
-### 4.6 Embedded resource and resource_link
+### 4.6 Embedded resource and resource_link (`ILOVEPDF_MCP_EMBED_RESULT`)
 
-`result-builder.ts` adds two additional content blocks to every successful tool result:
+By default the `content` array returned to the MCP client contains **only the text block** (a markdown summary of the operation). This is the maximally client-compatible default: Claude Desktop — and other clients that enforce strict MIME-type rules for embedded resources — reject tool results that include a `resource` block with a non-text MIME type such as `application/pdf`, returning a "media_type not allowed" error for the entire tool response.
 
-- **`resource` block (embedded blob):** the output file bytes base64-encoded, included only when the output size is ≤ `ILOVEPDF_MCP_MAX_INLINE_MB` (default 10 MB). This lets MCP clients that can render embedded resources present the file without a separate filesystem read.
+Set `ILOVEPDF_MCP_EMBED_RESULT=true` (or `1`) to also append the two additional content blocks described below. Use this only for clients that support embedded resource blobs, such as MCP Inspector.
 
-  **Size cap (`ILOVEPDF_MCP_MAX_INLINE_MB`):** keeps base64 blobs from bloating the client's context window. Set to `0` to disable inline embedding entirely. Only the local `output.path` is the authoritative file on disk.
+- **`resource` block (embedded blob):** the output file bytes base64-encoded, included only when `ILOVEPDF_MCP_EMBED_RESULT=true` **and** the output size is ≤ `ILOVEPDF_MCP_MAX_INLINE_MB` (default 10 MB). Lets MCP clients that can render embedded resources present the file without a separate filesystem read.
 
-- **`resource_link` block:** a `file://` URI pointing to the local output file, always present. Clients that do not render embedded blobs can use this as a clickable or programmatic reference to the local file.
+  **Size cap (`ILOVEPDF_MCP_MAX_INLINE_MB`):** keeps base64 blobs from bloating the client's context window. Set to `0` to suppress the blob while keeping the `resource_link`. The cap applies only when `ILOVEPDF_MCP_EMBED_RESULT=true`; it has no effect in the default text-only mode.
+
+- **`resource_link` block:** a `file://` URI pointing to the local output file. Present only when `ILOVEPDF_MCP_EMBED_RESULT=true`; within that mode it is always appended even when the blob is omitted due to the cap.
 
 Neither content block carries the iLovePDF credential (`?token=`) — they always point to the **local** output file via `file://` URIs.
 

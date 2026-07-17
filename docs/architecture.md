@@ -239,11 +239,13 @@ All error paths throw a typed `ToolError` carrying a stable `ErrorCode`, an inte
 
 The result builder assembles the LOCKED `structuredContent` shape (TOOL-5) plus a `content` array with the following layout:
 
-| Index | Type | Always present | Description |
+| Index | Type | Present | Description |
 |---|---|:---:|---|
-| 0 | `text` | Yes | Concise markdown op summary (sizes, file count, absolute path). |
-| 1 | `resource` | No | Embedded blob (base64 of the output file). Omitted when output > `ILOVEPDF_MCP_MAX_INLINE_MB` or cap is 0. |
-| last | `resource_link` | Yes | `file://` URI + filename + MIME type. Clients without blob rendering use this. |
+| 0 | `text` | Always | Concise markdown op summary (sizes, file count, absolute path). |
+| 1 | `resource` | Only when `ILOVEPDF_MCP_EMBED_RESULT=true` **and** output ≤ `ILOVEPDF_MCP_MAX_INLINE_MB` | Embedded blob (base64 of the output file). |
+| last | `resource_link` | Only when `ILOVEPDF_MCP_EMBED_RESULT=true` | `file://` URI + filename + MIME type. Present within embed mode even when the blob is omitted due to the cap. |
+
+**Default content is text-only.** By default, the `content` array contains only the text block (index 0). This is the maximally client-compatible default: some clients — notably Claude Desktop — reject tool results that include embedded resources with non-text MIME types (e.g. `application/pdf`), returning a "media_type not allowed" error for the entire tool response. Set `ILOVEPDF_MCP_EMBED_RESULT=true` to also include the embedded blob and resource_link for clients that support them (e.g. MCP Inspector).
 
 **`structuredContent.output.download_url`** has the `?token=` query string stripped before it leaves the server (DEC-4 — credential never returned to client). Set `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL=true` to return the raw tokenized URL instead (see security.md §4.5 for the trade-off).
 
@@ -262,23 +264,24 @@ The result builder assembles the LOCKED `structuredContent` shape (TOOL-5) plus 
                "ratio": 0.458, "durationMs": 812 }
 }
 
-// content[0] — text block (always)
+// content[0] — text block (always present — default content is text-only)
 { "type": "text", "text": "Compressed 1 PDF: 2.4 MB → 1.1 MB (54% smaller). Saved to `/abs/in-compress.pdf`." }
 
-// content[1] — embedded resource (when output ≤ cap)
+// content[1] — embedded resource (only when ILOVEPDF_MCP_EMBED_RESULT=true AND output ≤ cap)
 { "type": "resource", "resource": { "uri": "file:///abs/in-compress.pdf", "mimeType": "application/pdf", "blob": "<base64>" } }
 
-// content[last] — resource link (always)
+// content[last] — resource link (only when ILOVEPDF_MCP_EMBED_RESULT=true)
 { "type": "resource_link", "uri": "file:///abs/in-compress.pdf", "name": "in-compress.pdf", "mimeType": "application/pdf" }
 ```
 
 The same `RESULT_OUTPUT_SHAPE` (`contract/result-schema.ts`) is the `outputSchema` for every registered tool. The SDK validates `structuredContent` against it before returning to the client, enforcing the LOCKED contract at runtime.
 
-**New environment variables for result behavior:**
+**Environment variables for result behavior:**
 
 | Env var | Default | Description |
 |---|---|---|
-| `ILOVEPDF_MCP_MAX_INLINE_MB` | `10` | Max output size (MB) to embed as a base64 blob. Set `0` to disable. |
+| `ILOVEPDF_MCP_EMBED_RESULT` | `false` | When `true` or `1`, appends an embedded `resource` blob and `resource_link` to the `content` array. Off by default for Claude Desktop compatibility. Enable for clients that support embedded resources (e.g. MCP Inspector). |
+| `ILOVEPDF_MCP_MAX_INLINE_MB` | `10` | Max output size (MB) to embed as a base64 blob (applies only when `ILOVEPDF_MCP_EMBED_RESULT=true`). Set `0` to suppress the blob while keeping the `resource_link`. |
 | `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL` | `false` | When `true`, returns the raw tokenized `download_url` in `structuredContent.output`. |
 
 ---

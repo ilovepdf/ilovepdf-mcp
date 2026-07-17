@@ -59,6 +59,22 @@ export const getMaxInlineMb = (): number => {
 };
 
 /**
+ * When `true`, the tool result `content` array includes an embedded `resource`
+ * blob and a `resource_link` block in addition to the always-present text block.
+ * Default: `false` — content is text-only, which is the maximally
+ * client-compatible default (works in Claude Desktop, which rejects embedded
+ * resources with non-text MIME types).
+ *
+ * Enable only for clients that support embedded resource blobs, such as MCP
+ * Inspector. The `ILOVEPDF_MCP_MAX_INLINE_MB` size cap applies to the blob
+ * when this flag is on.
+ */
+export const getEmbedResult = (): boolean => {
+  const val = getEnv('ILOVEPDF_MCP_EMBED_RESULT');
+  return val?.toLowerCase() === 'true' || val === '1';
+};
+
+/**
  * When `true`, the raw tokenized iLovePDF `download_url` (including the
  * `?token=<jwt>` credential) is returned in `structuredContent.output.download_url`.
  *

@@ -53,7 +53,7 @@ import {
   type Allowlist,
 } from '../lib/file-io.js';
 import { safeFetch, type SafeFetchOptions } from '../lib/url-guard.js';
-import { getMaxInlineMb, getReturnDownloadUrl } from '../lib/env.js';
+import { getEmbedResult, getMaxInlineMb, getReturnDownloadUrl } from '../lib/env.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -140,8 +140,13 @@ export interface ToolCallResult {
   /**
    * Content blocks returned to the client:
    *   [0] Always: text/markdown operation summary (TOOL-7).
-   *   [1] Optional: embedded resource blob (when output ≤ ILOVEPDF_MCP_MAX_INLINE_MB).
-   *   [last] Always: resource_link pointing to the local output file.
+   *   [1]? Embedded resource blob — only when ILOVEPDF_MCP_EMBED_RESULT=true AND
+   *        output ≤ ILOVEPDF_MCP_MAX_INLINE_MB (and cap > 0).
+   *   [last]? resource_link — only when ILOVEPDF_MCP_EMBED_RESULT=true.
+   *
+   * By default (flag off) the content array is text-only — maximally client-compatible
+   * (Claude Desktop rejects embedded non-text resources). Set ILOVEPDF_MCP_EMBED_RESULT=true
+   * for clients that support embedded blobs, such as MCP Inspector.
    */
   content: ResultContentBlock[];
   structuredContent: ResultStructuredContent;
@@ -383,8 +388,15 @@ function summarize(
  *
  * Content array layout:
  *   [0]     Text block — op summary (TOOL-7). Always present and always first.
- *   [1]?    EmbeddedResource blob — only when outputBytes ≤ ILOVEPDF_MCP_MAX_INLINE_MB.
- *   [last]  ResourceLink — always present; clients without blob support can use this.
+ *   [1]?    EmbeddedResource blob — only when ILOVEPDF_MCP_EMBED_RESULT=true AND
+ *           outputBytes ≤ ILOVEPDF_MCP_MAX_INLINE_MB (and cap > 0).
+ *   [last]? ResourceLink — only when ILOVEPDF_MCP_EMBED_RESULT=true (always present
+ *           within that mode, even when the blob is omitted due to the cap).
+ *
+ * Default (ILOVEPDF_MCP_EMBED_RESULT unset / false): content is TEXT-ONLY.
+ * This is the maximally client-compatible default — Claude Desktop rejects tool
+ * results that contain embedded resources with non-text MIME types. Enable
+ * ILOVEPDF_MCP_EMBED_RESULT=true only for clients that support them (e.g. MCP Inspector).
  *
  * @throws ToolError('UPSTREAM_ERROR', retryable:true)  non-OK download (R1)
  * @throws ToolError('VALIDATION_ERROR', retryable:false) output would overwrite an input
@@ -467,9 +479,15 @@ export async function buildResult(params: BuildResultInput): Promise<ToolCallRes
   };
 
   // 8. Build content array:
-  //    [0] Text/markdown summary (TOOL-7) — always first.
-  //    [1]? Embedded blob resource — omitted when output exceeds the size cap or cap=0.
-  //    [last] Resource link — always present (clients without blob rendering need this).
+  //    [0]     Text/markdown summary (TOOL-7) — always first.
+  //    [1]?    Embedded blob resource — only when ILOVEPDF_MCP_EMBED_RESULT=true
+  //            AND output is within the size cap (cap > 0 and bytes ≤ cap).
+  //    [last]? Resource link — only when ILOVEPDF_MCP_EMBED_RESULT=true. Within
+  //            that mode it is always appended, even when the blob is omitted.
+  //
+  // Default (flag off): text-only content — maximally client-compatible. Claude
+  // Desktop rejects tool results that include embedded non-text resources. Enable
+  // ILOVEPDF_MCP_EMBED_RESULT=true only for clients that support them (e.g. MCP Inspector).
   //
   // When ILOVEPDF_MCP_RETURN_DOWNLOAD_URL is true, append the tokenized URL to
   // the text block so MCP clients that surface text (e.g. Claude Desktop) show a
@@ -481,34 +499,37 @@ export async function buildResult(params: BuildResultInput): Promise<ToolCallRes
     text: returnRawUrl ? `${summaryText}\n\nDownload: ${download_url}` : summaryText,
   };
 
-  const fileUri = toFileUri(written.path);
-  const mimeType = mimeTypeFor(written.path);
-
-  // Cap in bytes (0 → embed disabled).
-  const maxInlineMb = getMaxInlineMb();
-  const maxInlineBytes = maxInlineMb * 1024 * 1024;
-
   const content: ResultContentBlock[] = [textBlock];
 
-  // Include the embedded blob only when within the cap (cap > 0 and size fits).
-  if (maxInlineBytes > 0 && outputBytes <= maxInlineBytes) {
-    const blob = Buffer.from(buffer).toString('base64');
-    const embeddedBlock: EmbeddedResourceBlock = {
-      type: 'resource',
-      resource: { uri: fileUri, mimeType, blob },
-    };
-    content.push(embeddedBlock);
-  }
+  // Only add the embedded resource and resource_link when ILOVEPDF_MCP_EMBED_RESULT is on.
+  if (getEmbedResult()) {
+    const fileUri = toFileUri(written.path);
+    const mimeType = mimeTypeFor(written.path);
 
-  // Resource link is always added last so clients that do not render blobs
-  // still have an addressable reference to the local output file.
-  const linkBlock: ResourceLinkBlock = {
-    type: 'resource_link',
-    uri: fileUri,
-    name: path.basename(written.path),
-    mimeType,
-  };
-  content.push(linkBlock);
+    // Cap in bytes (0 → blob disabled, but resource_link is still added).
+    const maxInlineMb = getMaxInlineMb();
+    const maxInlineBytes = maxInlineMb * 1024 * 1024;
+
+    // Include the embedded blob only when within the cap (cap > 0 and size fits).
+    if (maxInlineBytes > 0 && outputBytes <= maxInlineBytes) {
+      const blob = Buffer.from(buffer).toString('base64');
+      const embeddedBlock: EmbeddedResourceBlock = {
+        type: 'resource',
+        resource: { uri: fileUri, mimeType, blob },
+      };
+      content.push(embeddedBlock);
+    }
+
+    // Resource link is always added last within embed mode so clients that do not
+    // render blobs still have an addressable reference to the local output file.
+    const linkBlock: ResourceLinkBlock = {
+      type: 'resource_link',
+      uri: fileUri,
+      name: path.basename(written.path),
+      mimeType,
+    };
+    content.push(linkBlock);
+  }
 
   return { content, structuredContent };
 }
