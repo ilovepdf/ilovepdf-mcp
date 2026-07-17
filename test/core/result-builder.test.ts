@@ -701,3 +701,89 @@ describe('buildResult — opt-in tokenized download URL (DEC-4 / Task 3)', () =>
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Download line in markdown text block
+// ---------------------------------------------------------------------------
+
+describe('buildResult — Download line in text block', () => {
+  it('flag true: text block includes a Download line with the tokenized URL', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', 'true');
+    setDownloadSize(512);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec(),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 1024,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    const text = (result.content[0] as { type: 'text'; text: string }).text;
+    // Must contain the Download line with the full tokenized URL.
+    expect(text).toContain('Download:');
+    expect(text).toContain(RAW_DOWNLOAD_URL);
+    expect(text).toContain(`token=${TEST_TOKEN}`);
+    // The Download line must appear after the summary line (separated by two newlines).
+    expect(text).toContain(`\n\nDownload: ${RAW_DOWNLOAD_URL}`);
+  });
+
+  it('flag false (default): text block has no Download line and no token (DEC-4 preserved)', async () => {
+    // Do not stub the flag — default is off.
+    setDownloadSize(512);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec(),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 1024,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    const text = (result.content[0] as { type: 'text'; text: string }).text;
+    expect(text).not.toContain('Download:');
+    expect(text).not.toContain('token=');
+    expect(text).not.toContain(TEST_TOKEN);
+  });
+
+  it('flag explicitly empty string: no Download line (DEC-4 preserved)', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', '');
+    setDownloadSize(512);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec(),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 1024,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    const text = (result.content[0] as { type: 'text'; text: string }).text;
+    expect(text).not.toContain('Download:');
+    expect(text).not.toContain(TEST_TOKEN);
+  });
+
+  it('flag true: summary line is preserved and Download line is appended, not replacing it', async () => {
+    vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', 'true');
+    setDownloadSize(1153433);
+
+    const result = await buildResult({
+      op: specFor('compress-pdf'),
+      exec: makeExec(),
+      sources: [path.join(work, 'in.pdf')],
+      inputBytes: 2516582,
+      allow,
+      startedAt: Date.now(),
+    });
+
+    const text = (result.content[0] as { type: 'text'; text: string }).text;
+    // The original summary content is still there.
+    expect(text).toContain('2.4 MB → 1.1 MB');
+    expect(text).toContain('Saved to');
+    // The Download line is appended after.
+    expect(text).toContain(`\n\nDownload: ${RAW_DOWNLOAD_URL}`);
+  });
+});

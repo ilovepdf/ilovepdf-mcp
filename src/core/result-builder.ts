@@ -470,9 +470,15 @@ export async function buildResult(params: BuildResultInput): Promise<ToolCallRes
   //    [0] Text/markdown summary (TOOL-7) — always first.
   //    [1]? Embedded blob resource — omitted when output exceeds the size cap or cap=0.
   //    [last] Resource link — always present (clients without blob rendering need this).
+  //
+  // When ILOVEPDF_MCP_RETURN_DOWNLOAD_URL is true, append the tokenized URL to
+  // the text block so MCP clients that surface text (e.g. Claude Desktop) show a
+  // clickable download link. The URL used here is the SAME tokenized URL already
+  // placed in structuredContent.output.download_url (DEC-4: only when flag is on).
+  const summaryText = summarize(op, sources.length, metrics, output);
   const textBlock: TextResultBlock = {
     type: 'text',
-    text: summarize(op, sources.length, metrics, output),
+    text: returnRawUrl ? `${summaryText}\n\nDownload: ${download_url}` : summaryText,
   };
 
   const fileUri = toFileUri(written.path);
