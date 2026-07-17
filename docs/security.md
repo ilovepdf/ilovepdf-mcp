@@ -67,6 +67,8 @@ flowchart TD
 
 **Key security property:** step 3 (`realpathSync`) resolves symlinks **before** the containment check. A symlink placed *inside* a root that points *outside* canonicalizes to an out-of-root target and is denied. The check operates on real, canonical paths — never on the attacker-supplied string.
 
+**Platform case sensitivity:** containment comparisons are **case-insensitive on Windows and macOS** (matching their default NTFS/APFS filesystems) and **case-sensitive on Linux** (matching genuinely case-sensitive mounts). Case-folding can only tighten access — it can never grant an escape.
+
 **Denial messages** name only the allowed root, never the attempted path, to prevent filesystem structure disclosure.
 
 ### 2.3 URL sources vs. local paths

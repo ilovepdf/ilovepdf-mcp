@@ -41,12 +41,15 @@ export interface Allowlist {
   defaultWorkdir: string;
 }
 
-const isWindows = process.platform === 'win32';
+// Case-fold on Windows (NTFS) and macOS (APFS/HFS+, case-insensitive by
+// default). Linux remains case-sensitive to match genuinely case-sensitive mounts.
+// Case-folding is strictly tighter than the FS (can never grant an escape).
+const isCaseInsensitivePlatform = process.platform === 'win32' || process.platform === 'darwin';
 
-/** Normalize a path for containment comparison (case-insensitive on Windows). */
+/** Normalize a path for containment comparison (case-insensitive on Windows and macOS). */
 function normalizeForCompare(p: string): string {
   const n = path.normalize(p);
-  return isWindows ? n.toLowerCase() : n;
+  return isCaseInsensitivePlatform ? n.toLowerCase() : n;
 }
 
 /** True when `candidate` is exactly a root or nested beneath it. */

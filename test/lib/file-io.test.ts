@@ -327,6 +327,24 @@ describe('Windows case-insensitive containment', () => {
   );
 });
 
+// --- macOS case-insensitive containment ------------------------------------
+// macOS APFS/HFS+ is case-insensitive by default. realpathSync does NOT
+// canonicalize case on macOS, so a legitimate in-root path whose ROOT portion
+// differs only in case would be wrongly denied without explicit case-folding.
+// This test mirrors the win32 case and documents the platform-coverage intent.
+
+describe('macOS case-insensitive containment', () => {
+  it.runIf(process.platform === 'darwin')(
+    'allows an in-root path whose root portion differs only in case',
+    async () => {
+      // Flip the case of the root prefix; on macOS this is the SAME location.
+      const flipped = work.toUpperCase() + path.sep + path.join('docs', 'report.pdf');
+      const file = await readInputFile(flipped, allow);
+      expect(Buffer.from(file.bytes).toString()).toBe('PDF-INSIDE');
+    }
+  );
+});
+
 // --- deriveOutputFilename --------------------------------------------------
 
 describe('deriveOutputFilename', () => {
