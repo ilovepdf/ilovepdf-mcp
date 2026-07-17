@@ -18,21 +18,7 @@ For setup, client wiring (Claude Desktop, Cursor, etc.), and API-key configurati
 
 ## Authoritative specification
 
-The testable capability requirements and all design decisions live under [`openspec/specs/`](../openspec/specs/):
-
-| Spec file | Covers |
-|---|---|
-| [`operations-registry.md`](../openspec/specs/operations-registry.md) | Registry SSOT, 10-op invariants |
-| [`tool-generation-and-result-contract.md`](../openspec/specs/tool-generation-and-result-contract.md) | TOOL-1..TOOL-9: tool naming, input shape, result contract, failure surface |
-| [`file-io-allowlist.md`](../openspec/specs/file-io-allowlist.md) | FIO-1..FIO-8: allowlist config, path canonicalization, symlink defense |
-| [`network-egress-ssrf.md`](../openspec/specs/network-egress-ssrf.md) | SSRF-1..SSRF-6: scheme allow-list, IP range deny-list, DNS check, redirect re-validation, host allow-list |
-| [`error-model.md`](../openspec/specs/error-model.md) | ERR-1..ERR-8: ToolError contract, retry behaviours, user-facing text rules |
-| [`transport-and-logging.md`](../openspec/specs/transport-and-logging.md) | LOG-1..LOG-6: stdio bootstrap, stdout isolation, stderr-only logging, redaction |
-| [`env-and-key-config.md`](../openspec/specs/env-and-key-config.md) | ENV-1..ENV-6: ILOVEPDF_PUBLIC_KEY, WORKDIR, ALLOWED_DIRS |
-
-The archived design and verify reports are at [`openspec/changes/archive/mcp-headless-core/`](../openspec/changes/archive/mcp-headless-core/).
-
-**openspec is the source of truth.** When this `docs/` folder and the specs disagree, the specs win.
+The technical documents in this `docs/` folder are the reference for the project's capabilities, design decisions, and security requirements. [architecture.md](./architecture.md) and [security.md](./security.md) cover the annotated requirements (TOOL-*, FIO-*, SSRF-*, ERR-*, LOG-*, ENV-*) in detail.
 
 ---
 

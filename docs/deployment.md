@@ -136,10 +136,8 @@ protects the filesystem but does **not** cover outbound URL fetches — a model 
 induced to target internal addresses (private ranges, or the cloud metadata endpoint
 `169.254.169.254`), a classic **SSRF** vector.
 
-This is now covered by a dedicated spec:
-[`network-egress-ssrf.md`](../openspec/specs/network-egress-ssrf.md)
-(SSRF-1…SSRF-6, decision `DEC-3`). A new `lib/url-guard.ts` module enforces a
-deny-by-default egress guard: http(s)-only schemes, blocked private/loopback/link-local/
+The `lib/url-guard.ts` module enforces a deny-by-default egress guard
+(SSRF-1…SSRF-6, decision `DEC-3`): http(s)-only schemes, blocked private/loopback/link-local/
 metadata ranges, **resolved-IP** validation (DNS-rebinding defense), redirect
 re-validation, and host-constraining the iLovePDF `download_url`. Note the scoping
 nuance: URL *inputs* are delegated to iLovePDF's cloud upload (they fetch, not us), so

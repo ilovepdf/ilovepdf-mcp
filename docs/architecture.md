@@ -4,8 +4,6 @@
 
 `ilovepdf-mcp` is a **headless, client-agnostic MCP server** that speaks the Model Context Protocol over **stdio** (`StdioServerTransport`). It exposes exactly **10 iLovePDF tools**, generated data-drivenly by iterating the `OPERATIONS` registry in `domain/operations.ts` — the single source of truth. A tool call resolves local-path or URL inputs through a deny-by-default allowlist, uploads them to the iLovePDF v1 REST API, triggers processing, downloads the produced file, writes it to the allowlisted working directory, and returns a structured `CallToolResult` (not a rendered widget). The design isolates the stdio transport to a single file (`index.ts`) so a future Streamable HTTP entry point is purely additive.
 
-For the authoritative planning record see [`openspec/changes/archive/mcp-headless-core/design.md`](../openspec/changes/archive/mcp-headless-core/design.md) and [`openspec/specs/`](../openspec/specs/).
-
 ---
 
 ## 2. Layered module diagram

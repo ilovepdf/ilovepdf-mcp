@@ -1,6 +1,6 @@
 # Security
 
-This document covers the primary security surfaces of `ilovepdf-mcp`: the local filesystem allowlist, the network egress / SSRF guard, and credential handling. For the authoritative requirements see [`openspec/specs/`](../openspec/specs/) and the verify report at [`openspec/changes/archive/mcp-headless-core/verify-report.md`](../openspec/changes/archive/mcp-headless-core/verify-report.md).
+This document covers the primary security surfaces of `ilovepdf-mcp`: the local filesystem allowlist, the network egress / SSRF guard, and credential handling.
 
 ---
 
