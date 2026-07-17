@@ -41,3 +41,37 @@ export const getPublicKey = (): string | undefined => getEnv('ILOVEPDF_PUBLIC_KE
 
 /** Optional file-io allowlist root; when unset the allowlist defaults to CWD (ENV-3). */
 export const getWorkdir = (): string | undefined => getEnv('ILOVEPDF_MCP_WORKDIR');
+
+/**
+ * Maximum output file size (in MB) to embed as a base64 blob in the content
+ * array returned to the MCP client. When 0, inline embedding is disabled
+ * entirely and only a resource_link is emitted.
+ *
+ * Default: 10 MB. Larger values bloat the client's context window and may cause
+ * performance issues. Cap conservatively; the local `output.path` is always the
+ * authoritative result.
+ */
+export const getMaxInlineMb = (): number => {
+  const raw = getEnv('ILOVEPDF_MCP_MAX_INLINE_MB');
+  if (raw === undefined) return 10;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 10;
+};
+
+/**
+ * When `true`, the raw tokenized iLovePDF `download_url` (including the
+ * `?token=<jwt>` credential) is returned in `structuredContent.output.download_url`.
+ *
+ * SECURITY TRADE-OFF: the task-scoped token grants temporary download access to
+ * the produced file from any network location. Enable only when the MCP client
+ * needs a directly-downloadable link AND you trust it to handle the credential
+ * safely (e.g. a server-side agent that immediately fetches and discards it).
+ *
+ * Default: `false` (token is always stripped per DEC-4).
+ * The audit-logger redacts `?token=` in all log lines regardless of this flag —
+ * the flag controls only what is RETURNED to the client, never what is LOGGED.
+ */
+export const getReturnDownloadUrl = (): boolean => {
+  const val = getEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL');
+  return val?.toLowerCase() === 'true' || val === '1';
+};

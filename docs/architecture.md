@@ -237,22 +237,49 @@ All error paths throw a typed `ToolError` carrying a stable `ErrorCode`, an inte
 
 ## 8. Result contract (success)
 
-The result builder assembles the LOCKED `structuredContent` shape (TOOL-5) plus one operation-specific markdown `content` block (TOOL-7). The `download_url` value in `structuredContent.output` has the `?token=` query string stripped before it leaves the server (DEC-4 — credential never returned to client).
+The result builder assembles the LOCKED `structuredContent` shape (TOOL-5) plus a `content` array with the following layout:
+
+| Index | Type | Always present | Description |
+|---|---|:---:|---|
+| 0 | `text` | Yes | Concise markdown op summary (sizes, file count, absolute path). |
+| 1 | `resource` | No | Embedded blob (base64 of the output file). Omitted when output > `ILOVEPDF_MCP_MAX_INLINE_MB` or cap is 0. |
+| last | `resource_link` | Yes | `file://` URI + filename + MIME type. Clients without blob rendering use this. |
+
+**`structuredContent.output.download_url`** has the `?token=` query string stripped before it leaves the server (DEC-4 — credential never returned to client). Set `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL=true` to return the raw tokenized URL instead (see security.md §4.5 for the trade-off).
+
+**Never-overwrite guarantee:** if the resolved output path would equal any resolved local input source path, `buildResult` throws `VALIDATION_ERROR` before writing a single byte. Additionally, `deriveOutputFilename` detects when the upstream filename equals an input basename and falls back to the `<stem>-<apiTool>.<ext>` pattern so the default output always differs from the input.
 
 ```jsonc
+// structuredContent (always present)
 {
-  "operation": "compress-pdf",              // registry name (kebab-case)
+  "operation": "compress-pdf",
   "status": "completed",
   "input":   { "sources": ["/abs/in.pdf"], "count": 1, "totalBytes": 2516582 },
-  "output":  { "path": "/abs/out.pdf",
+  "output":  { "path": "/abs/in-compress.pdf",
                "download_url": "https://api7.ilovepdf.com/v1/download/…",
                "bytes": 1153433, "fileCount": 1 },
   "metrics": { "inputBytes": 2516582, "outputBytes": 1153433,
                "ratio": 0.458, "durationMs": 812 }
 }
+
+// content[0] — text block (always)
+{ "type": "text", "text": "Compressed 1 PDF: 2.4 MB → 1.1 MB (54% smaller). Saved to `/abs/in-compress.pdf`." }
+
+// content[1] — embedded resource (when output ≤ cap)
+{ "type": "resource", "resource": { "uri": "file:///abs/in-compress.pdf", "mimeType": "application/pdf", "blob": "<base64>" } }
+
+// content[last] — resource link (always)
+{ "type": "resource_link", "uri": "file:///abs/in-compress.pdf", "name": "in-compress.pdf", "mimeType": "application/pdf" }
 ```
 
 The same `RESULT_OUTPUT_SHAPE` (`contract/result-schema.ts`) is the `outputSchema` for every registered tool. The SDK validates `structuredContent` against it before returning to the client, enforcing the LOCKED contract at runtime.
+
+**New environment variables for result behavior:**
+
+| Env var | Default | Description |
+|---|---|---|
+| `ILOVEPDF_MCP_MAX_INLINE_MB` | `10` | Max output size (MB) to embed as a base64 blob. Set `0` to disable. |
+| `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL` | `false` | When `true`, returns the raw tokenized `download_url` in `structuredContent.output`. |
 
 ---
 

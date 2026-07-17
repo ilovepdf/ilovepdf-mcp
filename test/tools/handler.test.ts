@@ -301,6 +301,71 @@ describe('makeHandler — output_path allowlist (TOOL-8)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Overwrite protection — handler wires resolvedLocalPaths to buildResult
+// ---------------------------------------------------------------------------
+
+describe('makeHandler — overwrite protection (data-safety)', () => {
+  it('passes resolvedLocalPaths of local sources to buildResult', async () => {
+    const { p, size } = writeFixture('in.pdf', 4096);
+    vi.mocked(buildResult).mockResolvedValue({
+      content: [{ type: 'text' as const, text: 'Compressed 1 PDF.' }],
+      structuredContent: {
+        operation: 'compress-pdf',
+        status: 'completed' as const,
+        input: { sources: [p], count: 1, totalBytes: size },
+        output: {
+          path: path.join(work, 'out.pdf'),
+          download_url: 'https://api-mock.iloveimg.com/v1/download/task_mock',
+          bytes: 50,
+          fileCount: 1,
+        },
+        metrics: { inputBytes: size, outputBytes: 50, ratio: 0.5, durationMs: 3 },
+      },
+    });
+
+    const handler = makeHandler(specFor('compress-pdf'));
+    await handler({ sources: [p] });
+
+    // buildResult must receive resolvedLocalPaths containing the resolved input path.
+    expect(buildResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resolvedLocalPaths: expect.arrayContaining([
+          expect.stringContaining('in.pdf'),
+        ]),
+      })
+    );
+  });
+
+  it('URL-only sources → resolvedLocalPaths is empty (no path to compare)', async () => {
+    vi.mocked(buildResult).mockResolvedValue({
+      content: [{ type: 'text' as const, text: 'Compressed 1 PDF.' }],
+      structuredContent: {
+        operation: 'compress-pdf',
+        status: 'completed' as const,
+        input: { sources: ['https://example.com/doc.pdf'], count: 1, totalBytes: 0 },
+        output: {
+          path: path.join(work, 'out.pdf'),
+          download_url: 'https://api-mock.iloveimg.com/v1/download/task_mock',
+          bytes: 10,
+          fileCount: 1,
+        },
+        metrics: { inputBytes: 0, outputBytes: 10, ratio: 0, durationMs: 1 },
+      },
+    });
+
+    const handler = makeHandler(specFor('compress-pdf'));
+    await handler({ sources: ['https://example.com/doc.pdf'] });
+
+    // URL sources have no local path; resolvedLocalPaths must be empty.
+    expect(buildResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resolvedLocalPaths: [],
+      })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Failure surface (TOOL-9 / ERR-8) + DEC-5
 // ---------------------------------------------------------------------------
 
@@ -341,7 +406,8 @@ describe('makeHandler — failure surface (TOOL-9 / ERR-8, DEC-5)', () => {
     expect(res.structuredContent.error_code).toBe('INTERNAL');
     expect(res.structuredContent.retryable).toBe(false);
     // The generic userMessage is surfaced, never the raw 'boom' diagnostic.
-    expect(res.content[0].text).not.toContain('boom');
+    // content[0] is the text block; access .text directly (not type-checked in test context).
+    expect((res.content[0] as { type: 'text'; text: string }).text).not.toContain('boom');
   });
 
   it('DEC-5: detail with an absolute path never leaks to the client; full toStructured goes to stderr', async () => {
@@ -364,7 +430,7 @@ describe('makeHandler — failure surface (TOOL-9 / ERR-8, DEC-5)', () => {
     // Client-facing surface: no `detail`, no absolute diagnostic path anywhere.
     expect(res.structuredContent).not.toHaveProperty('detail');
     expect(JSON.stringify(res)).not.toContain(secretAbs);
-    expect(res.content[0].text).toBe(userMessage);
+    expect((res.content[0] as { type: 'text'; text: string }).text).toBe(userMessage);
 
     // The FULL toStructured() (incl. detail) is audited to stderr. Inspect the
     // actual argument object (not a JSON string — Windows paths escape their
@@ -521,8 +587,9 @@ describe('makeHandler — option normalization (DEC-2)', () => {
     // Default `mode: 'text'` from the registry survived the merge.
     expect(passedOptions.mode).toBe('text');
 
-    // The warning is surfaced in the SINGLE content block (TOOL-7 preserved).
-    expect(res.content).toHaveLength(1);
-    expect(res.content[0].text).toContain('Arial Unicode MS');
+    // The warning is surfaced in the first content block (the text summary block).
+    // content[0] is always the text block; cast for direct .text access.
+    expect(res.content[0].type).toBe('text');
+    expect((res.content[0] as { type: 'text'; text: string }).text).toContain('Arial Unicode MS');
   });
 });

@@ -118,6 +118,11 @@ interface ResolvedInput {
   filename: string;
   /** Byte size for size validation + inputBytes; 0 for URL sources. */
   size: number;
+  /**
+   * Canonical absolute path for local (non-URL) sources — used for the
+   * overwrite-protection guard passed to buildResult. Absent for URL sources.
+   */
+  absPath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,6 +224,7 @@ async function resolveSources(
         } as UploadFileInput,
         filename: local.filename,
         size: local.size,
+        absPath: local.absPath,
       };
     })
   );
@@ -325,6 +331,14 @@ export function makeHandler(op: OperationSpec) {
       const exec = await execute(op, creds, normalized);
 
       const inputBytes = inputs.reduce((sum, input) => sum + input.size, 0);
+
+      // Collect canonical absolute paths of local input sources for the
+      // overwrite-protection guard inside buildResult. URL sources have no
+      // local path and are excluded from this list.
+      const resolvedLocalPaths = inputs
+        .map(i => i.absPath)
+        .filter((p): p is string => p !== undefined);
+
       const result = await buildResult({
         op,
         exec,
@@ -333,13 +347,18 @@ export function makeHandler(op: OperationSpec) {
         output_path: args.output_path,
         allow,
         startedAt,
+        resolvedLocalPaths,
       });
 
-      // DEC-2: surface normalization warnings inside the SINGLE content block
-      // (TOOL-7 mandates exactly one content item).
-      if (warnings.length > 0 && result.content[0]) {
-        const note = `\n\nNotes:\n${warnings.map(w => `- ${w}`).join('\n')}`;
-        result.content[0].text += note;
+      // DEC-2: surface normalization warnings inside the first content block
+      // (the text summary block, always at index 0). Type-narrow before mutating
+      // since content blocks are a discriminated union.
+      if (warnings.length > 0) {
+        const firstBlock = result.content[0];
+        if (firstBlock && firstBlock.type === 'text') {
+          const note = `\n\nNotes:\n${warnings.map(w => `- ${w}`).join('\n')}`;
+          firstBlock.text += note;
+        }
       }
 
       return result;

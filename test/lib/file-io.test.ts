@@ -380,4 +380,29 @@ describe('deriveOutputFilename', () => {
       deriveOutputFilename(opFor('compress'), ['https://x.com/files/big.pdf'], '')
     ).toBe('big-compress.pdf');
   });
+
+  // Data-safety: collision-avoidance (default output must never equal input).
+  it('falls back to <stem>-<apiTool>.<ext> when upstream name matches any source basename', () => {
+    // The upstream name "doc.pdf" is the same as source basename "doc.pdf".
+    // Derivation must fall back to "doc-compress.pdf" to prevent overwriting the input.
+    expect(
+      deriveOutputFilename(opFor('compress'), ['/work/doc.pdf'], 'doc.pdf')
+    ).toBe('doc-compress.pdf');
+  });
+
+  it('does NOT fall back when upstream name differs from all source basenames', () => {
+    // "result.pdf" != "doc.pdf" → upstream name is used as-is.
+    expect(
+      deriveOutputFilename(opFor('compress'), ['/work/doc.pdf'], 'result.pdf')
+    ).toBe('result.pdf');
+  });
+
+  it('collision detection is case-insensitive on all platforms (safety-first)', () => {
+    // Source is "Doc.pdf", upstream is "doc.pdf" (different case).
+    // On case-insensitive filesystems (Windows/macOS) these are the same file;
+    // the fallback fires to be safe.
+    const result = deriveOutputFilename(opFor('compress'), ['/work/Doc.pdf'], 'doc.pdf');
+    // The fallback uses the stem from the source ("Doc" → "Doc-compress.pdf").
+    expect(result).toBe('Doc-compress.pdf');
+  });
 });
