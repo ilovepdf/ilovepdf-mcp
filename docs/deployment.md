@@ -137,7 +137,7 @@ induced to target internal addresses (private ranges, or the cloud metadata endp
 `169.254.169.254`), a classic **SSRF** vector.
 
 This is now covered by a dedicated spec:
-[`network-egress-ssrf.md`](../openspec/changes/mcp-headless-core/specs/network-egress-ssrf.md)
+[`network-egress-ssrf.md`](../openspec/specs/network-egress-ssrf.md)
 (SSRF-1…SSRF-6, decision `DEC-3`). A new `lib/url-guard.ts` module enforces a
 deny-by-default egress guard: http(s)-only schemes, blocked private/loopback/link-local/
 metadata ranges, **resolved-IP** validation (DNS-rebinding defense), redirect

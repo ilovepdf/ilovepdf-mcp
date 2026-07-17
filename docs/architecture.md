@@ -266,6 +266,6 @@ The same `RESULT_OUTPUT_SHAPE` (`contract/result-schema.ts`) is the `outputSchem
 | Language | TypeScript ^5 — ESM, `module`/`moduleResolution: NodeNext`, `strict`. **`.js` extensions required** on all relative imports |
 | MCP SDK | `@modelcontextprotocol/sdk` ^1 — `McpServer` + `StdioServerTransport` |
 | Schema | `zod` ^3 — authoritative for all input and output shapes; SDK derives JSON Schema from the `ZodRawShape`; no hand-maintained JSON copies |
-| Tests | `vitest` ^2 — node env, globals; 272 tests green across 25 files |
+| Tests | `vitest` ^2 — node env, globals; 287 tests green across 26 files |
 | Lint | ESLint — `no-console` allows only `console.error`/`console.warn` |
 | Format | Prettier — `singleQuote`, `arrowParens: avoid`, `trailingComma: es5` |

@@ -27,7 +27,7 @@ flowchart LR
             dom["<b>domain/</b><br/>operations (registry —<br/>single source of truth)<br/>operation-types · errors"]:::pkg
             con["<b>contract/</b><br/>options · input · result<br/>schemas (Zod authoritative)"]:::pkg
             cor["<b>core/</b><br/>ilovepdf-api · upload-service<br/>operation-executor · result-builder<br/>option-normalizer · auth-utils<br/>audit-logger → stderr"]:::pkg
-            lib["<b>lib/</b><br/>env · file-io (allowlist)<br/>file-validation · stdout-guard"]:::pkg
+            lib["<b>lib/</b><br/>env · file-io (allowlist)<br/>file-validation · stdout-guard<br/>url-guard (SSRF)"]:::pkg
         end
 
         idx --> srv

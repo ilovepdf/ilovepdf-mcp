@@ -50,7 +50,7 @@ All file access is deny-by-default. Inputs and outputs must resolve to a path in
 | `ilovepdf_office_to_pdf` | Convert Word, Excel, or PowerPoint to PDF |
 | `ilovepdf_merge_pdf` | Combine multiple PDFs into one |
 | `ilovepdf_split_pdf` | Split a PDF by page range or fixed chunks (output: `.zip`) |
-| `ilovepdf_unlock` | Remove a known password from a PDF |
+| `ilovepdf_unlock` | Remove password and permission restrictions from a PDF via iLovePDF (owner-restricted PDFs are unlocked regardless of the supplied password) |
 | `ilovepdf_watermark` | Add a text or image watermark to a PDF |
 | `ilovepdf_pagenumber` | Add page numbers to a PDF |
 | `ilovepdf_pdf_ocr` | Extract text from scanned PDFs using OCR |
