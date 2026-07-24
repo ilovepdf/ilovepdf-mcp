@@ -357,13 +357,17 @@ export function deriveOutputFilename(
 
   // Collision check: if the upstream name matches any source basename, use the
   // fallback so the output never shadows the input by default.
-  const sourceBasenames = sources.map(s => {
-    const base = path.basename(s.replace(/\\/g, '/'));
-    return isCaseInsensitivePlatform ? base.toLowerCase() : base;
-  });
-  const normalizedSanitized = isCaseInsensitivePlatform
-    ? sanitized.toLowerCase()
-    : sanitized;
+  //
+  // Always compare case-insensitively regardless of platform. This is a
+  // data-safety guard — it must be conservative on every OS so the output
+  // never silently overwrites an input that differs only by case (e.g. the
+  // upstream returns "doc.pdf" for input "Doc.pdf" on a case-sensitive Linux
+  // filesystem). The allowlist containment logic (resolveWithin) remains
+  // platform-matched; only this collision check is unconditionally lowercase.
+  const sourceBasenames = sources.map(s =>
+    path.basename(s.replace(/\\/g, '/')).toLowerCase()
+  );
+  const normalizedSanitized = sanitized.toLowerCase();
 
   return sourceBasenames.includes(normalizedSanitized) ? fallback : sanitized;
 }

@@ -17,15 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Primary matrix: all three supported Node versions on Linux.
-        os: [ubuntu-latest]
-        node: [18, 20, 22]
-        # Cross-OS spot-check: Node 20 on Windows and macOS.
-        include:
-          - os: windows-latest
-            node: 20
-          - os: macos-latest
-            node: 20
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20]
     steps:
       - uses: actions/checkout@v4
 

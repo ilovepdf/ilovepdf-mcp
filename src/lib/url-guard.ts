@@ -256,8 +256,18 @@ export async function assertUrlAllowed(
 ): Promise<void> {
   const parsed = parseAndCheckScheme(rawUrl);
 
-  // `URL.hostname` strips brackets from IPv6 literals ("[::1]" → "::1").
-  const hostname = parsed.hostname;
+  // URL.hostname returns IPv6 literals WITH surrounding brackets on all
+  // platforms (e.g. "[::1]", "[2606:4700:4700::1111]"). net.isIPv6 / net.isIP
+  // do not recognize the bracketed form, so a bracketed literal would fall
+  // through to dns.lookup — which behaves differently per OS (Linux may fail
+  // to resolve the bracketed string, causing a spurious VALIDATION_ERROR for
+  // public addresses). Strip brackets first so IP-literal detection is
+  // platform-deterministic and no DNS lookup is ever made for IP literals.
+  const rawHostname = parsed.hostname;
+  const hostname =
+    rawHostname.startsWith('[') && rawHostname.endsWith(']')
+      ? rawHostname.slice(1, -1)
+      : rawHostname;
 
   if (isIPv4(hostname)) {
     // SSRF-2: IPv4 literal — no DNS needed.
@@ -269,8 +279,10 @@ export async function assertUrlAllowed(
         false
       );
     }
-  } else if (isIPv6(hostname)) {
-    // SSRF-2: IPv6 literal (brackets already stripped by URL parser).
+  } else if (isIPv6(hostname) || hostname.includes(':')) {
+    // SSRF-2: IPv6 literal (brackets stripped above). The `hostname.includes(':')`
+    // guard catches mixed dotted-quad notation such as "::ffff:169.254.169.254"
+    // that net.isIPv6 may not recognize, consistent with assertUrlPrecheck.
     if (isBlockedIpv6(hostname)) {
       throw new ToolError(
         'VALIDATION_ERROR',
@@ -336,7 +348,15 @@ async function defaultResolve(hostname: string): Promise<string[]> {
  */
 export function assertUrlPrecheck(rawUrl: string): void {
   const parsed = parseAndCheckScheme(rawUrl);
-  const hostname = parsed.hostname;
+
+  // Strip surrounding brackets from IPv6 literals (same rationale as
+  // assertUrlAllowed — URL.hostname returns "[::1]" WITH brackets on all
+  // platforms; strip them so isIPv4 / includes(':') classify the host correctly).
+  const rawHostname = parsed.hostname;
+  const hostname =
+    rawHostname.startsWith('[') && rawHostname.endsWith(']')
+      ? rawHostname.slice(1, -1)
+      : rawHostname;
 
   if (isIPv4(hostname)) {
     if (isBlockedIpv4(hostname)) {
@@ -348,10 +368,10 @@ export function assertUrlPrecheck(rawUrl: string): void {
       );
     }
   } else if (hostname.includes(':')) {
-    // Any colon in the hostname (after bracket-stripping by the URL parser)
-    // means it is an IPv6 literal — pure-hex OR mixed dotted-quad notation.
-    // Route through isBlockedIpv6 (which delegates to ipv6ToBytes) so both
-    // notations are classified correctly without calling net.isIPv6().
+    // Any colon in the (bracket-stripped) hostname means it is an IPv6 literal
+    // — pure-hex OR mixed dotted-quad notation. Route through isBlockedIpv6
+    // (which delegates to ipv6ToBytes) so both notations are classified
+    // correctly without relying on net.isIPv6().
     if (isBlockedIpv6(hostname)) {
       throw new ToolError(
         'VALIDATION_ERROR',
