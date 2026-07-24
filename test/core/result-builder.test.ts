@@ -26,7 +26,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -84,7 +84,7 @@ async function catchToolErrorAsync(promise: Promise<unknown>): Promise<ToolError
 
 beforeEach(() => {
   mock = installMockILovePDFFetch();
-  work = mkdtempSync(path.join(tmpdir(), 'result-builder-'));
+  work = realpathSync(mkdtempSync(path.join(tmpdir(), 'result-builder-')));
   allow = loadAllowlist({ ILOVEPDF_MCP_WORKDIR: work } as NodeJS.ProcessEnv);
   // Mock DNS so the SSRF guard inside safeFetch does NOT make real lookups.
   // api1g.ilovepdf.com (TEST_SERVER) is a hostname — resolve it to a public IP.

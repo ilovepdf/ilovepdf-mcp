@@ -40,7 +40,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
@@ -102,7 +102,7 @@ function writeFixture(name: string, bytes: number): { p: string; size: number } 
 }
 
 beforeEach(() => {
-  work = mkdtempSync(path.join(tmpdir(), 'ilovepdf-handler-'));
+  work = realpathSync(mkdtempSync(path.join(tmpdir(), 'ilovepdf-handler-')));
   process.env.ILOVEPDF_MCP_WORKDIR = work;
   process.env.ILOVEPDF_PUBLIC_KEY = 'test-public-key';
   delete process.env.ILOVEPDF_MCP_ALLOWED_DIRS;

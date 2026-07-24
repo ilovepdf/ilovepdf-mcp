@@ -28,7 +28,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { existsSync, execSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, execSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
@@ -106,7 +106,7 @@ let samplePdf: string;
 beforeAll(async () => {
   // Create a fresh temp workdir and write a minimal valid PDF into it.
   // This makes the suite self-contained — no gitignored files are required.
-  tempDir = mkdtempSync(path.join(tmpdir(), 'ilovepdf-e2e-'));
+  tempDir = realpathSync(mkdtempSync(path.join(tmpdir(), 'ilovepdf-e2e-')));
   samplePdf = path.join(tempDir, 'sample.pdf');
   writeFileSync(samplePdf, makeMinimalPdf());
 
