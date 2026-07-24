@@ -17,17 +17,19 @@
  *   - Deterministic: no iLovePDF API key/network needed — both failures are
  *     caught at pre-flight validation BEFORE any file is uploaded.
  *   - Self-contained: builds `dist/` if absent (same pattern as
- *     test/smoke/stdio-handshake.test.ts).
+ *     test/smoke/stdio-handshake.test.ts). Creates its own temp workdir and
+ *     generates a minimal valid PDF into it — no dependency on gitignored
+ *     files such as gitignored build artifacts.
  *   - Generous timeout: 30 s to accommodate cold builds.
- *   - Guaranteed teardown: `afterAll` closes the client even on failure/timeout.
- *
- * Mirrors the approach in `sandbox/mcp-client.mjs` but wrapped in vitest.
+ *   - Guaranteed teardown: `afterAll` closes the client and removes the temp
+ *     dir even on failure/timeout.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { existsSync, execSync } from 'fs';
+import { existsSync, execSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
 
@@ -39,13 +41,45 @@ const __filename = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = path.resolve(path.dirname(__filename), '../../');
 const DIST_ENTRY = path.join(PROJECT_ROOT, 'dist', 'index.js');
 
+// ---------------------------------------------------------------------------
+// Minimal valid PDF generator
+// ---------------------------------------------------------------------------
+
 /**
- * A real PDF file that lives in the project sandbox. Used as the `sources`
- * argument for the options-validation test so the handler can resolve the
- * source (local file read) before validateOptions fires. The test asserts a
- * VALIDATION_ERROR from validateOptions — no API call is made.
+ * Generate a minimal single-page PDF as a Buffer with correct xref offsets.
+ * The content is structurally valid (Acrobat-readable) but carries no visual
+ * content — sufficient for the pre-flight validation tests below, which never
+ * upload to iLovePDF.
  */
-const SAMPLE_PDF = path.join(PROJECT_ROOT, 'sandbox', 'sample.pdf');
+function makeMinimalPdf(): Buffer {
+  const header = '%PDF-1.4\n';
+  const obj1 = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+  const obj2 = '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n';
+  const obj3 =
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\n';
+
+  const off1 = header.length;
+  const off2 = off1 + obj1.length;
+  const off3 = off2 + obj2.length;
+  const xrefOffset = off3 + obj3.length;
+
+  const pad = (n: number) => String(n).padStart(10, '0');
+
+  const xref =
+    'xref\n' +
+    '0 4\n' +
+    `0000000000 65535 f \n` +
+    `${pad(off1)} 00000 n \n` +
+    `${pad(off2)} 00000 n \n` +
+    `${pad(off3)} 00000 n \n` +
+    'trailer\n' +
+    '<< /Size 4 /Root 1 0 R >>\n' +
+    'startxref\n' +
+    `${xrefOffset}\n` +
+    '%%EOF\n';
+
+  return Buffer.from(header + obj1 + obj2 + obj3 + xref, 'latin1');
+}
 
 // ---------------------------------------------------------------------------
 // Timing constants
@@ -55,17 +89,27 @@ const SAMPLE_PDF = path.join(PROJECT_ROOT, 'sandbox', 'sample.pdf');
 const TEST_TIMEOUT = 30_000;
 
 // ---------------------------------------------------------------------------
-// Shared client / transport (one server instance for the whole suite)
+// Shared state (one server instance + one temp dir for the whole suite)
 // ---------------------------------------------------------------------------
 
 let client: Client;
 let transport: StdioClientTransport;
+/** Temp workdir created in beforeAll and removed in afterAll. */
+let tempDir: string;
+/** Absolute path to the generated sample PDF inside tempDir. */
+let samplePdf: string;
 
 // ---------------------------------------------------------------------------
 // Setup / teardown
 // ---------------------------------------------------------------------------
 
 beforeAll(async () => {
+  // Create a fresh temp workdir and write a minimal valid PDF into it.
+  // This makes the suite self-contained — no gitignored files are required.
+  tempDir = mkdtempSync(path.join(tmpdir(), 'ilovepdf-e2e-'));
+  samplePdf = path.join(tempDir, 'sample.pdf');
+  writeFileSync(samplePdf, makeMinimalPdf());
+
   // Build dist if absent — supports running `npm run test` without a prior
   // explicit build step (gate-ordering is the primary path; this fallback
   // prevents silent failures in bare test runs).
@@ -83,9 +127,9 @@ beforeAll(async () => {
       // Dummy key: server starts normally; LOG-6 warning → stderr only.
       // validateOptions / assertUrlPrecheck both fire BEFORE any API call.
       ILOVEPDF_PUBLIC_KEY: 'e2e-validation-test-dummy',
-      // Pin the allowlist root to the project dir so sandbox/sample.pdf is
+      // Pin the allowlist root to the generated temp dir so samplePdf is
       // accessible for the options-validation call.
-      ILOVEPDF_MCP_WORKDIR: PROJECT_ROOT,
+      ILOVEPDF_MCP_WORKDIR: tempDir,
     },
   });
 
@@ -105,6 +149,15 @@ afterAll(async () => {
   } catch {
     // Ignore errors during shutdown (child may already be dead).
   }
+
+  // Remove the temp workdir created in beforeAll.
+  try {
+    if (tempDir && existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  } catch {
+    // Best-effort cleanup — test isolation does not depend on this succeeding.
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -118,10 +171,14 @@ describe('validation-e2e (real server path — SDK schema + handler)', () => {
       // Before fix: SDK intercepts the strict schema → -32602 protocol error
       // (no structuredContent). After fix: loosened SDK schema → handler runs
       // → validateOptions throws → toErrorResult returns the structured surface.
+      //
+      // The handler reads samplePdf from the temp workdir (resolveSources),
+      // validates the .pdf extension, then validateOptions fires on the
+      // invalid compression_level value — no API call is ever made.
       const result = await client.callTool({
         name: 'ilovepdf_compress_pdf',
         arguments: {
-          sources: [SAMPLE_PDF],
+          sources: [samplePdf],
           options: { compression_level: 'ultra' },
         },
       });
@@ -141,6 +198,8 @@ describe('validation-e2e (real server path — SDK schema + handler)', () => {
       // returns false) → URL delegated to iLovePDF → INTERNAL error without
       // structuredContent. After fix: hostname.includes(':') triggers
       // isBlockedIpv6 → VALIDATION_ERROR returned with the structured surface.
+      //
+      // This test uses a URL source and has no dependency on any local file.
       const result = await client.callTool({
         name: 'ilovepdf_compress_pdf',
         arguments: {
