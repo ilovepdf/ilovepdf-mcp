@@ -45,7 +45,7 @@ import { ToolError, isToolError } from '../domain/errors.js';
 import type { ErrorCode } from '../domain/errors.js';
 import type { OperationSpec } from '../domain/operation-types.js';
 import { requireEnv } from '../lib/env.js';
-import { validateOptions } from '../contract/options-schema.js';
+import { validateOptions, applyPdfjpgQuality } from '../contract/options-schema.js';
 import {
   isUrl,
   loadAllowlist,
@@ -322,6 +322,12 @@ export function makeHandler(op: OperationSpec) {
       // DEC-2: merge defaults, THEN normalize (after merge, before execute).
       const merged = { ...op.defaultOptions, ...(args.options ?? {}) };
       const { options: normalized, warnings } = normalizeOptions(op.name, merged);
+
+      // pdf-to-jpg: map quality → dpi before the API call (port from openai-app/mcp-server).
+      // iLovePDF honors 'dpi' (150 = Normal, 300 = High) and silently drops 'quality'.
+      if (op.name === 'pdf-to-jpg') {
+        applyPdfjpgQuality(normalized);
+      }
 
       const uploads = inputs.map(input => input.upload);
       const creds = op.requiresSharedTask

@@ -136,19 +136,17 @@ export const imageToPdfOptionsSchema = z
         'true = merge all images into one PDF (default); false = one PDF per image.'
       ),
     orientation: z
-      .enum(['portrait', 'landscape'])
+      .string()
       .optional()
-      .describe('Page orientation. Default: "portrait".'),
+      .describe('Page orientation. Default: "portrait". Accepts: portrait, landscape. Similar values are auto-normalized.'),
     margin: z
       .number()
-      .min(0)
-      .max(100)
       .optional()
-      .describe('Page margin in pixels. Default: 0.'),
+      .describe('Page margin in pixels. Default: 0. Values below 0 are clamped to 0; values above 100 are clamped to 100.'),
     pagesize: z
-      .enum(['fit', 'A4', 'letter'])
+      .string()
       .optional()
-      .describe('Output page size. Default: "fit".'),
+      .describe('Output page size. Default: "fit". Accepts: fit, A4, letter. Unknown values are normalized to "fit".'),
   })
   .passthrough();
 
@@ -180,15 +178,14 @@ export type MergePdfOptions = z.infer<typeof mergePdfOptionsSchema>;
 export const splitOptionsSchema = z
   .object({
     split_mode: z
-      .enum(['fixed_range', 'ranges', 'remove_pages', 'filesize'])
+      .string()
       .optional()
-      .describe('Splitting mode. REQUIRED for processing.'),
+      .describe('Splitting mode. REQUIRED for processing. Accepts: fixed_range, ranges, remove_pages, filesize. Unknown values are normalized to "ranges".'),
     fixed_range: z
       .number()
-      .positive()
       .optional()
       .describe(
-        'Pages per chunk when split_mode="fixed_range". Use 1 for individual pages. "last page" is not valid in this mode.'
+        'Pages per chunk when split_mode="fixed_range". Use 1 for individual pages. Values below 1 are clamped to 1. "last page" is not valid in this mode.'
       ),
     ranges: z
       .string()
@@ -255,10 +252,10 @@ export const watermarkOptionsSchema = z
       .optional()
       .describe('CSS hex color, e.g. "#FF0000".'),
     font_style: z
-      .enum(['Bold', 'Italic'])
+      .string()
       .nullable()
       .optional()
-      .describe('Font style. Accepted: null (Regular), Bold, Italic.'),
+      .describe('Font style. Accepted: null (Regular), Bold, Italic. Unknown values are normalized to null.'),
     transparency: z
       .number()
       .min(0)
@@ -274,8 +271,8 @@ export const watermarkOptionsSchema = z
       .boolean()
       .optional()
       .describe('Tile the watermark across the full page.'),
-    vertical_position: z.enum(['top', 'middle', 'bottom']).optional(),
-    horizontal_position: z.enum(['left', 'center', 'right']).optional(),
+    vertical_position: z.string().optional().describe('Vertical position: top, middle, or bottom. Similar values auto-matched (e.g. "arriba" → "top").'),
+    horizontal_position: z.string().optional().describe('Horizontal position: left, center, or right. Similar values auto-matched (e.g. "izquierda" → "left").'),
     pages: z
       .string()
       .optional()
