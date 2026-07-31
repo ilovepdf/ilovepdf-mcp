@@ -12,3 +12,15 @@ sandbox
 CLAUDE.md
 openspec/
 docs/presentation/
+
+# VS Code MCP config (may contain API keys)
+.vscode/mcp.json
+
+# Integration test artifacts
+test-results.json
+test/integration/*.json
+
+# Local HTML reference pages and scratch PDFs (reference docs, not deliverables)
+docs/ilovepdf-docs.es.html
+docs/tools-reference.html
+input.pdf
