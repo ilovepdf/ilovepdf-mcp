@@ -46,14 +46,23 @@ export type ValidFontFamily = (typeof VALID_FONT_FAMILIES)[number];
 // compress-pdf
 // ---------------------------------------------------------------------------
 
+const COMPRESSION_LEVEL_VALID = new Set([
+  'recommended', 'recomendado', 'normal', 'default',
+  'extreme', 'extremo', 'high', 'alta', 'alto', 'maximum', 'max', 'highest',
+  'low', 'bajo', 'baja', 'light', 'minimal', 'minimum', 'min', 'none', 'ninguno', 'ninguna',
+]);
+
 export const compressOptionsSchema = z
   .object({
     compression_level: z
       .string()
+      .refine(v => COMPRESSION_LEVEL_VALID.has(v.trim().toLowerCase()), {
+        message: 'Invalid compression_level. Accepted: recommended, extreme, low (and common synonyms).',
+      })
       .optional()
       .describe(
         'Compression aggressiveness. Accepted: "recommended", "extreme", "low". ' +
-          'Similar values are auto-normalized (e.g. "high" → "extreme", "none" → "low"). Default: "recommended".'
+        'Similar values are auto-normalized (e.g. "high" → "extreme", "none" → "low"). Default: "recommended".'
       ),
   })
   .passthrough();
@@ -64,21 +73,29 @@ export type CompressOptions = z.infer<typeof compressOptionsSchema>;
 // pdf-to-jpg
 // ---------------------------------------------------------------------------
 
+const PDFJPG_MODE_VALID = new Set([
+  'pages', 'page', 'pagina', 'paginas',
+  'extract', 'extraer', 'extracted', 'extrae',
+]);
+
 export const pdfToJpgOptionsSchema = z
   .object({
     pdfjpg_mode: z
       .string()
+      .refine(v => PDFJPG_MODE_VALID.has(v.trim().toLowerCase()), {
+        message: 'Invalid pdfjpg_mode. Accepted: pages, extract.',
+      })
       .optional()
       .describe(
         '"pages" converts each page to an image; "extract" extracts embedded images. ' +
-          'Similar values are auto-normalized (e.g. "page" → "pages"). Default: "pages".'
+        'Similar values are auto-normalized (e.g. "page" → "pages"). Default: "pages".'
       ),
     quality: z
       .string()
       .optional()
       .describe(
         'Output image quality. "Normal" = 150 dpi, "High" = 300 dpi. ' +
-          'Case-insensitive (e.g. "normal" → "Normal"). Omit for the iLovePDF default.'
+        'Case-insensitive (e.g. "normal" → "Normal"). Omit for the iLovePDF default.'
       ),
   })
   .passthrough();
@@ -196,7 +213,7 @@ export const splitOptionsSchema = z
       .optional()
       .describe(
         'Page ranges when split_mode="ranges". E.g., "1-3,4-6,7-end". ' +
-          '"first" and "last" keywords are valid (e.g., "first-5", "6-last").'
+        '"first" and "last" keywords are valid (e.g., "first-5", "6-last").'
       ),
     remove_pages: z
       .string()
@@ -363,12 +380,12 @@ export const pdfOcrOptionsSchema = z
       .optional()
       .describe(
         'OCR language codes. E.g., ["eng"], ["spa", "eng"]. Default: ["eng"]. ' +
-          'Full list: eng, afr, amh, ara, asm, aze, bel, ben, bod, bos, bul, ' +
-          'cat, ces, chi_sim, chi_tra, dan, deu, ell, epo, est, eus, fas, fil, ' +
-          'fin, fra, gla, gle, glg, guj, heb, hin, hrv, hun, hye, ind, isl, ita, ' +
-          'jpn, kan, kat, kaz, khm, kor, lao, lat, lav, lit, mal, mar, mkd, mlt, ' +
-          'mon, msa, mya, nep, nld, nor, pan, pol, por, ron, rus, sin, slk, slv, ' +
-          'spa, sqi, srp, swa, swe, tam, tel, tgl, tha, tur, ukr, urd, vie, yid'
+        'Full list: eng, afr, amh, ara, asm, aze, bel, ben, bod, bos, bul, ' +
+        'cat, ces, chi_sim, chi_tra, dan, deu, ell, epo, est, eus, fas, fil, ' +
+        'fin, fra, gla, gle, glg, guj, heb, hin, hrv, hun, hye, ind, isl, ita, ' +
+        'jpn, kan, kat, kaz, khm, kor, lao, lat, lav, lit, mal, mar, mkd, mlt, ' +
+        'mon, msa, mya, nep, nld, nor, pan, pol, por, ron, rus, sin, slk, slv, ' +
+        'spa, sqi, srp, swa, swe, tam, tel, tgl, tha, tur, ukr, urd, vie, yid'
       ),
   })
   .passthrough();

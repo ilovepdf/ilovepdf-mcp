@@ -102,10 +102,10 @@ interface FailureStructuredContent {
 export type HandlerResult =
   | (ToolCallResult & { isError?: false })
   | {
-      isError: true;
-      content: Array<{ type: 'text'; text: string }>;
-      structuredContent: FailureStructuredContent;
-    };
+    isError: true;
+    content: Array<{ type: 'text'; text: string }>;
+    structuredContent: FailureStructuredContent;
+  };
 
 // ---------------------------------------------------------------------------
 // Internal: a resolved source pairs an upload input with validation metadata.
@@ -257,11 +257,11 @@ function toErrorResult(
   const toolErr = isToolError(err)
     ? err
     : new ToolError(
-        'INTERNAL',
-        err instanceof Error ? err.message : String(err),
-        'An unexpected error occurred. Please try again.',
-        false
-      );
+      'INTERNAL',
+      err instanceof Error ? err.message : String(err),
+      'An unexpected error occurred. Please try again.',
+      false
+    );
 
   // DEC-5: audit the FULL toStructured() (incl. detail) to stderr only.
   log.error(`[handler] ${op.name} failed`, toolErr.toStructured());
@@ -388,13 +388,13 @@ export function makeHandler(op: OperationSpec) {
           'chinese traditional': 'chi_tra', 'chino tradicional': 'chi_tra',
         };
         const VALID_OCR_CODES = new Set([
-          'eng','afr','amh','ara','asm','aze','bel','ben','bod','bos','bul','cat','ces',
-          'chi_sim','chi_tra','dan','deu','ell','epo','est','eus','fas','fil','fin','fra',
-          'gla','gle','glg','guj','heb','hin','hrv','hun','hye','ind','isl','ita','jpn',
-          'kan','kat','kaz','khm','kor','lao','lat','lav','lit','mal','mar','mkd','mlt',
-          'mon','msa','mya','nep','nld','nor','pan','pol','por','ron','rus','sin','slk',
-          'slv','spa','sqi','srp','swa','swe','tam','tel','tgl','tha','tur','ukr','urd',
-          'vie','yid',
+          'eng', 'afr', 'amh', 'ara', 'asm', 'aze', 'bel', 'ben', 'bod', 'bos', 'bul', 'cat', 'ces',
+          'chi_sim', 'chi_tra', 'dan', 'deu', 'ell', 'epo', 'est', 'eus', 'fas', 'fil', 'fin', 'fra',
+          'gla', 'gle', 'glg', 'guj', 'heb', 'hin', 'hrv', 'hun', 'hye', 'ind', 'isl', 'ita', 'jpn',
+          'kan', 'kat', 'kaz', 'khm', 'kor', 'lao', 'lat', 'lav', 'lit', 'mal', 'mar', 'mkd', 'mlt',
+          'mon', 'msa', 'mya', 'nep', 'nld', 'nor', 'pan', 'pol', 'por', 'ron', 'rus', 'sin', 'slk',
+          'slv', 'spa', 'sqi', 'srp', 'swa', 'swe', 'tam', 'tel', 'tgl', 'tha', 'tur', 'ukr', 'urd',
+          'vie', 'yid',
         ]);
         const langs: string[] = [];
         for (const lang of raw) {
@@ -423,18 +423,6 @@ export function makeHandler(op: OperationSpec) {
           'VALIDATION_ERROR',
           'unlock requires a password but none was provided.',
           'Please provide the PDF password via the "password" option.',
-          false
-        );
-      }
-
-      // watermark: when mode=text (the default), text is required. Catch this before
-      // the API call so the user gets a clear VALIDATION_ERROR instead of a cryptic
-      // UPSTREAM_ERROR from iLovePDF ("This task can't be processed").
-      if (op.name === 'watermark' && normalized.mode === 'text' && !normalized.text) {
-        throw new ToolError(
-          'VALIDATION_ERROR',
-          'Invalid options for "watermark": "text" is required when mode is "text".',
-          'Please provide the watermark text content via the "text" option.',
           false
         );
       }
