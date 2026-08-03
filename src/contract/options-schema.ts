@@ -49,9 +49,12 @@ export type ValidFontFamily = (typeof VALID_FONT_FAMILIES)[number];
 export const compressOptionsSchema = z
   .object({
     compression_level: z
-      .enum(['recommended', 'extreme', 'low'])
+      .string()
       .optional()
-      .describe('Compression aggressiveness. Default: "recommended".'),
+      .describe(
+        'Compression aggressiveness. Accepted: "recommended", "extreme", "low". ' +
+          'Similar values are auto-normalized (e.g. "high" → "extreme", "none" → "low"). Default: "recommended".'
+      ),
   })
   .passthrough();
 
@@ -64,17 +67,18 @@ export type CompressOptions = z.infer<typeof compressOptionsSchema>;
 export const pdfToJpgOptionsSchema = z
   .object({
     pdfjpg_mode: z
-      .enum(['pages', 'extract'])
+      .string()
       .optional()
       .describe(
-        '"pages" converts each page to an image; "extract" extracts embedded images.'
+        '"pages" converts each page to an image; "extract" extracts embedded images. ' +
+          'Similar values are auto-normalized (e.g. "page" → "pages"). Default: "pages".'
       ),
     quality: z
-      .enum(['Normal', 'High'])
+      .string()
       .optional()
       .describe(
         'Output image quality. "Normal" = 150 dpi, "High" = 300 dpi. ' +
-          'Omit for the iLovePDF default. No other tiers exist.'
+          'Case-insensitive (e.g. "normal" → "Normal"). Omit for the iLovePDF default.'
       ),
   })
   .passthrough();
@@ -130,10 +134,10 @@ export function applyPdfjpgQuality(
 export const imageToPdfOptionsSchema = z
   .object({
     merge_after: z
-      .boolean()
+      .union([z.boolean(), z.string(), z.number()])
       .optional()
       .describe(
-        'true = merge all images into one PDF (default); false = one PDF per image.'
+        'true = merge all images into one PDF (default); false = one PDF per image. Accepts boolean or "true"/"false" strings.'
       ),
     orientation: z
       .string()
@@ -237,9 +241,9 @@ export const watermarkOptionsSchema = z
       .optional()
       .describe('Watermark text content. REQUIRED when mode is "text".'),
     mode: z
-      .enum(['text', 'image'])
+      .string()
       .optional()
-      .describe('"text" (default) or "image" watermark mode.'),
+      .describe('"text" (default) or "image" watermark mode. Similar values auto-normalized (e.g. "texto" → "text", "img" → "image").'),
     font_family: z
       .string()
       .optional()
@@ -258,19 +262,25 @@ export const watermarkOptionsSchema = z
       .describe('Font style. Accepted: null (Regular), Bold, Italic. Unknown values are normalized to null.'),
     transparency: z
       .number()
-      .min(0)
+      .min(1)
       .max(100)
       .optional()
-      .describe('Transparency 0–100.'),
+      .describe('Transparency 1–100. 1 = almost transparent, 100 = fully opaque.'),
     rotation: z.number().optional().describe('Rotation in degrees.'),
     layer: z
-      .enum(['above', 'below'])
+      .string()
       .optional()
-      .describe('Whether to place the watermark above or below content.'),
+      .describe('Place watermark above or below content. Accepted: "above", "below". Similar values auto-normalized (e.g. "encima" → "above", "abajo" → "below").'),
     mosaic: z
       .boolean()
       .optional()
       .describe('Tile the watermark across the full page.'),
+    image_source: z
+      .string()
+      .optional()
+      .describe(
+        'Path or URL of the JPG or PNG image to use as watermark. Required when mode is "image".'
+      ),
     vertical_position: z.string().optional().describe('Vertical position: top, middle, or bottom. Similar values auto-matched (e.g. "arriba" → "top").'),
     horizontal_position: z.string().optional().describe('Horizontal position: left, center, or right. Similar values auto-matched (e.g. "izquierda" → "left").'),
     pages: z
@@ -299,9 +309,8 @@ export const pagenumberOptionsSchema = z
     starting_number: z
       .number()
       .int()
-      .positive()
       .optional()
-      .describe('Displayed number on the first numbered page. Default: 1.'),
+      .describe('Displayed number on the first numbered page. Default: 1. Values below 1 are clamped to 1.'),
     text: z
       .string()
       .optional()
