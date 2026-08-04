@@ -3,6 +3,7 @@ dist
 .env
 coverage
 sandbox
+.vscode/
 
 # Local AI-dev tooling (not project deliverables)
 .claude/
@@ -13,9 +14,6 @@ CLAUDE.md
 openspec/
 docs/presentation/
 
-# VS Code MCP config (may contain API keys)
-.vscode/mcp.json
-
 # Integration test artifacts
 test-results.json
 test/integration/*.json
@@ -24,3 +22,6 @@ test/integration/*.json
 docs/ilovepdf-docs.es.html
 docs/tools-reference.html
 input.pdf
+
+# open code MCP config (may contain API keys)
+opencode.json
