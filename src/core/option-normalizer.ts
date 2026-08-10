@@ -67,7 +67,12 @@ function normalizeFontFamily(supplied: string): {
     const fl = font.toLowerCase();
     return fl.includes(suppliedLower) || suppliedLower.includes(fl);
   });
-  if (partialMatch) return { value: partialMatch };
+  if (partialMatch) {
+    return {
+      value: partialMatch,
+      warning: `Font '${supplied}' was interpreted as '${partialMatch}'.`,
+    };
+  }
 
   return {
     value: 'Arial Unicode MS',
@@ -81,40 +86,43 @@ function normalizeVerticalPosition(
 ): { value: string; warning?: string } {
   const s = supplied.toLowerCase().trim();
 
-  if (['top', 'arriba', 'superior', 'up'].some(v => s.includes(v))) {
-    return { value: 'top' };
-  }
-
-  if (
-    ['middle', 'center', 'centro', 'centrado', 'medio'].some(v => s.includes(v))
-  ) {
+  if (s === 'top') return { value: 'top' };
+  if (s === 'middle') {
     if (toolName === 'watermark') return { value: 'middle' };
-    return {
-      value: 'bottom',
-      warning:
-        'Vertical centering is not supported for pagenumber. Using bottom position instead.',
-    };
+    return { value: 'bottom', warning: 'Vertical centering is not supported for pagenumber. Using bottom position instead.' };
+  }
+  if (s === 'bottom') return { value: 'bottom' };
+
+  if (['arriba', 'superior', 'up'].some(v => s.includes(v))) {
+    return { value: 'top', warning: `vertical_position '${supplied}' was interpreted as 'top'.` };
   }
 
-  if (['bottom', 'abajo', 'inferior', 'down'].some(v => s.includes(v))) {
-    return { value: 'bottom' };
+  if (['center', 'centro', 'centrado', 'medio'].some(v => s.includes(v))) {
+    if (toolName === 'watermark') return { value: 'middle', warning: `vertical_position '${supplied}' was interpreted as 'middle'.` };
+    return { value: 'bottom', warning: 'Vertical centering is not supported for pagenumber. Using bottom position instead.' };
+  }
+
+  if (['abajo', 'inferior', 'down'].some(v => s.includes(v))) {
+    return { value: 'bottom', warning: `vertical_position '${supplied}' was interpreted as 'bottom'.` };
   }
 
   // Unrecognized
-  if (toolName === 'watermark') return { value: 'middle' };
-  return {
-    value: 'bottom',
-    warning: `Vertical position '${supplied}' was not recognized. Using bottom.`,
-  };
+  if (toolName === 'watermark') return { value: 'middle', warning: `vertical_position '${supplied}' was not recognized. Using 'middle'.` };
+  return { value: 'bottom', warning: `Vertical position '${supplied}' was not recognized. Using bottom.` };
 }
 
-function normalizeHorizontalPosition(supplied: string): string {
+function normalizeHorizontalPosition(supplied: string): { value: string; warning?: string } {
   const s = supplied.toLowerCase().trim();
-  if (['left', 'izquierda', 'izq'].some(v => s.includes(v))) return 'left';
-  if (['center', 'centro', 'centrado', 'middle'].some(v => s.includes(v)))
-    return 'center';
-  if (['right', 'derecha', 'der'].some(v => s.includes(v))) return 'right';
-  return 'center';
+
+  if (s === 'left') return { value: 'left' };
+  if (s === 'center') return { value: 'center' };
+  if (s === 'right') return { value: 'right' };
+
+  if (['izquierda', 'izq'].some(v => s.includes(v))) return { value: 'left', warning: `horizontal_position '${supplied}' was interpreted as 'left'.` };
+  if (['centro', 'centrado', 'middle'].some(v => s.includes(v))) return { value: 'center', warning: `horizontal_position '${supplied}' was interpreted as 'center'.` };
+  if (['derecha', 'der'].some(v => s.includes(v))) return { value: 'right', warning: `horizontal_position '${supplied}' was interpreted as 'right'.` };
+
+  return { value: 'center', warning: `horizontal_position '${supplied}' was not recognized. Using 'center'.` };
 }
 
 function normalizeBoolean(
@@ -311,6 +319,7 @@ export function normalizeOptions(
       const suppliedSplitMode =
         typeof options.split_mode === 'string' ? options.split_mode : '';
       if (!VALID_SPLIT_MODES.includes(suppliedSplitMode)) {
+        warnings.push(`split_mode '${suppliedSplitMode}' is not valid. Using 'ranges'.`);
         options.split_mode = 'ranges';
       }
     }
@@ -418,13 +427,16 @@ export function normalizeOptions(
     // Validate orientation
     if (options.orientation !== undefined) {
       const s = String(options.orientation).toLowerCase().trim();
-      if (!['portrait', 'landscape'].includes(s))
+      if (!['portrait', 'landscape'].includes(s)) {
+        warnings.push(`orientation '${options.orientation}' is not valid. Using 'portrait'.`);
         options.orientation = 'portrait';
+      }
     }
 
     // Validate pagesize
     if (options.pagesize !== undefined) {
       if (!['fit', 'A4', 'letter'].includes(String(options.pagesize))) {
+        warnings.push(`pagesize '${options.pagesize}' is not valid. Using 'fit'.`);
         options.pagesize = 'fit';
       }
     }
@@ -440,15 +452,25 @@ export function normalizeOptions(
       );
     }
 
-    // margin ≥ 0 (pixels, no upper bound)
+    // margin: 0–100 pixels
     if (options.margin !== undefined) {
       const num = Number(options.margin);
       if (isNaN(num) || num < 0) {
         options.margin = 0;
         if (!isNaN(num)) warnings.push('Margin must be ≥ 0. Using 0.');
+      } else if (num > 100) {
+        options.margin = 100;
+        warnings.push('Margin must be ≤ 100. Using 100.');
       } else {
         options.margin = Math.trunc(num);
       }
+    }
+
+    // merge_after: coerce to boolean
+    if (options.merge_after !== undefined) {
+      const r = normalizeBoolean(options.merge_after, 'merge_after');
+      options.merge_after = r.value;
+      if (r.warning) warnings.push(r.warning);
     }
   }
 
@@ -457,6 +479,32 @@ export function normalizeOptions(
   // -------------------------------------------------------------------------
   if (toolName === 'watermark') {
     if (options.mode == null) options.mode = 'text';
+
+    // mode: normalize synonyms
+    if (options.mode !== undefined) {
+      const m = String(options.mode).trim().toLowerCase();
+      if (['text', 'texto', 'txt'].includes(m)) {
+        options.mode = 'text';
+      } else if (['image', 'imagen', 'img', 'picture', 'foto', 'photo'].includes(m)) {
+        options.mode = 'image';
+      } else {
+        warnings.push(`watermark mode '${options.mode}' is not valid. Using 'text'.`);
+        options.mode = 'text';
+      }
+    }
+
+    // layer: normalize synonyms
+    if (options.layer !== undefined) {
+      const l = String(options.layer).trim().toLowerCase();
+      if (['above', 'encima', 'sobre', 'over', 'arriba', 'front'].includes(l)) {
+        options.layer = 'above';
+      } else if (['below', 'abajo', 'bajo', 'under', 'beneath', 'debajo', 'back', 'behind'].includes(l)) {
+        options.layer = 'below';
+      } else {
+        warnings.push(`watermark layer '${options.layer}' is not valid. Using 'above'.`);
+        options.layer = 'above';
+      }
+    }
 
     // iLovePDF does not support "all pages except the last page":
     // only supports specific pages like "1-556 if file has 557 pages".
@@ -512,9 +560,9 @@ export function normalizeOptions(
     }
 
     if (options.horizontal_position !== undefined) {
-      options.horizontal_position = normalizeHorizontalPosition(
-        String(options.horizontal_position)
-      );
+      const r = normalizeHorizontalPosition(String(options.horizontal_position));
+      options.horizontal_position = r.value;
+      if (r.warning) warnings.push(r.warning);
     }
 
     // transparency: integer 1-100
@@ -600,9 +648,9 @@ export function normalizeOptions(
     }
 
     if (options.horizontal_position !== undefined) {
-      options.horizontal_position = normalizeHorizontalPosition(
-        String(options.horizontal_position)
-      );
+      const r = normalizeHorizontalPosition(String(options.horizontal_position));
+      options.horizontal_position = r.value;
+      if (r.warning) warnings.push(r.warning);
     }
 
     if (options.facing_pages !== undefined) {
@@ -645,6 +693,17 @@ export function normalizeOptions(
     // Normalize pages "end" → 9999
     if (typeof options.pages === 'string') {
       options.pages = options.pages.replace(/\bend\b/gi, '9999');
+    }
+
+    // starting_number must be ≥ 1
+    if (options.starting_number !== undefined) {
+      const num = Number(options.starting_number);
+      if (isNaN(num) || num < 1) {
+        options.starting_number = 1;
+        if (!isNaN(num)) warnings.push('starting_number must be ≥ 1. Using 1.');
+      } else {
+        options.starting_number = Math.trunc(num);
+      }
     }
   }
 
