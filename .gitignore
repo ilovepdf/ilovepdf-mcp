@@ -17,6 +17,7 @@ docs/presentation/
 # Integration test artifacts
 test-results.json
 test/integration/*.json
+test/integration/runner.ts
 
 # Local HTML reference pages and scratch PDFs (reference docs, not deliverables)
 docs/ilovepdf-docs.es.html
