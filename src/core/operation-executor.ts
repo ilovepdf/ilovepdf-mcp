@@ -183,6 +183,9 @@ function buildProcessOptions(
   callerOptions: ProcessOptions
 ): ILovePDFProcessOptions {
   const cleaned: Record<string, unknown> = { ...callerOptions };
+  // password is a file-level attribute per the iLovePDF API; move it onto each file
+  const filePassword = typeof cleaned.password === 'string' ? cleaned.password : undefined;
+  delete cleaned.password;
   // Remove fields that are internal to our API surface
   for (const key of [
     'tool',
@@ -195,7 +198,10 @@ function buildProcessOptions(
   ]) {
     delete cleaned[key];
   }
-  return { files, ...(cleaned as Omit<ILovePDFProcessOptions, 'files'>) };
+  const resolvedFiles = filePassword
+    ? files.map(f => ({ ...f, password: filePassword }))
+    : files;
+  return { files: resolvedFiles, ...(cleaned as Omit<ILovePDFProcessOptions, 'files'>) };
 }
 
 /**
