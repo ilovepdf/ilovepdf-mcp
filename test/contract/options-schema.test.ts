@@ -236,17 +236,19 @@ describe('validateOptions', () => {
     expect((caught as ToolError).code).toBe('VALIDATION_ERROR');
   });
 
-  // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
-  // it('throws ToolError(VALIDATION_ERROR) for unlock with a numeric password', () => {
-  //   let caught: unknown;
-  //   try {
-  //     validateOptions('unlock', { password: 123 });
-  //   } catch (err) {
-  //     caught = err;
-  //   }
-  //   expect(isToolError(caught)).toBe(true);
-  //   expect((caught as ToolError).code).toBe('VALIDATION_ERROR');
-  // });
+  // 'unlock' TEMPORARILY DISABLED — no schema is registered for it, so
+  // validateOptions no-ops instead of throwing; re-enable alongside the
+  // registry entry to re-publish.
+  it.skip('throws ToolError(VALIDATION_ERROR) for unlock with a numeric password', () => {
+    let caught: unknown;
+    try {
+      validateOptions('unlock', { password: 123 });
+    } catch (err) {
+      caught = err;
+    }
+    expect(isToolError(caught)).toBe(true);
+    expect((caught as ToolError).code).toBe('VALIDATION_ERROR');
+  });
 
   it('does not throw for office-to-pdf with empty options', () => {
     expect(() => validateOptions('office-to-pdf', {})).not.toThrow();

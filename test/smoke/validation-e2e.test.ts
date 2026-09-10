@@ -28,7 +28,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { existsSync, execSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs';
+import { execSync } from 'child_process';
 import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 import * as path from 'path';
@@ -176,7 +177,7 @@ describe('validation-e2e (real server path — SDK schema + handler)', () => {
       // validates the .pdf extension, then validateOptions fires on the
       // invalid compression_level value — no API call is ever made.
       const result = await client.callTool({
-        name: 'ilovepdf_compress_pdf',
+        name: 'iLovePDF_compress_pdf',
         arguments: {
           sources: [samplePdf],
           options: { compression_level: 'ultra' },
@@ -201,7 +202,7 @@ describe('validation-e2e (real server path — SDK schema + handler)', () => {
       //
       // This test uses a URL source and has no dependency on any local file.
       const result = await client.callTool({
-        name: 'ilovepdf_compress_pdf',
+        name: 'iLovePDF_compress_pdf',
         arguments: {
           sources: ['http://[::ffff:169.254.169.254]/doc.pdf'],
         },
