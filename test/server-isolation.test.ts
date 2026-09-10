@@ -14,7 +14,7 @@
  *    references are forbidden (LOG-2).
  *
  * 2. RUNTIME ASSERT — `buildServer()` returns a fully configured `McpServer`
- *    with all 10 tools registered WITHOUT connecting a transport. No transport
+ *    with all 9 tools registered WITHOUT connecting a transport. No transport
  *    is bound here; the registered tool count is verified via the internal
  *    `_registeredTools` map (same introspection pattern as
  *    test/tools/tool-generation.test.ts).
@@ -161,7 +161,7 @@ describe('buildServer() — runtime assertion (LOG-1, LOG-2)', () => {
     expect(server).toBeInstanceOf(McpServer);
   });
 
-  it('registers exactly OPERATION_NAMES.length (10) tools without a transport', () => {
+  it('registers exactly OPERATION_NAMES.length (9) tools without a transport', () => {
     // buildServer() must complete with all tools registered and without
     // calling server.connect() — no transport is bound in this test.
     const server = buildServer();
@@ -169,10 +169,11 @@ describe('buildServer() — runtime assertion (LOG-1, LOG-2)', () => {
     expect(Object.keys(tools)).toHaveLength(OPERATION_NAMES.length);
   });
 
-  it('registers exactly 10 tools (absolute count guard)', () => {
+  it('registers exactly 9 tools (absolute count guard)', () => {
+    // unlock temporarily disabled (10 → 9). Re-enable to restore the 10th tool.
     const server = buildServer();
     const tools = getTools(server);
-    expect(Object.keys(tools)).toHaveLength(10);
+    expect(Object.keys(tools)).toHaveLength(9);
   });
 
   it('every registered tool has inputSchema and outputSchema defined', () => {

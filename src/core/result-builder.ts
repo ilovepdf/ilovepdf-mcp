@@ -365,8 +365,9 @@ function summarize(
       return `Merged ${inputCount} PDFs into one. ${at}`;
     case 'split-pdf':
       return `Split PDF into ${output.fileCount} file${plural(output.fileCount)}. ${at}`;
-    case 'unlock':
-      return `Unlocked ${inputCount} PDF${plural(inputCount)}. ${at}`;
+    // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
+    // case 'unlock':
+    //   return `Unlocked ${inputCount} PDF${plural(inputCount)}. ${at}`;
     case 'watermark':
       return `Added a watermark to ${inputCount} PDF${plural(inputCount)}. ${at}`;
     case 'pagenumber':

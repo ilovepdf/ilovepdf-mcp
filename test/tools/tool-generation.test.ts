@@ -145,19 +145,20 @@ describe('registerAllTools — count (TOOL-1)', () => {
     expect(Object.keys(tools)).toHaveLength(OPERATION_NAMES.length);
   });
 
-  it('mocked OPERATION_NAMES includes the stub (11 total)', () => {
-    // Confirm the mock injected the 11th entry — prerequisite for the next test.
+  it('mocked OPERATION_NAMES includes the stub (10 total)', () => {
+    // Confirm the mock injected the extra entry — prerequisite for the next test.
+    // (9 real ops + 1 stub = 10; unlock temporarily disabled.)
     expect(OPERATION_NAMES).toContain(STUB_OP_NAME);
-    expect(OPERATION_NAMES).toHaveLength(11);
+    expect(OPERATION_NAMES).toHaveLength(10);
   });
 
-  it('stubbed 11th entry yields an 11th tool with no register.ts change (TOOL-1)', () => {
-    // OPERATION_NAMES is mocked to 11 entries. registerAllTools must produce
-    // 11 tools purely by iteration — no hardcoded counts in register.ts.
+  it('stubbed extra entry yields an extra tool with no register.ts change (TOOL-1)', () => {
+    // OPERATION_NAMES is mocked to 10 entries. registerAllTools must produce
+    // 10 tools purely by iteration — no hardcoded counts in register.ts.
     const server = makeServer();
     registerAllTools(server);
     const tools = getTools(server);
-    expect(Object.keys(tools)).toHaveLength(11);
+    expect(Object.keys(tools)).toHaveLength(10);
     expect(Object.keys(tools)).toContain(STUB_TOOL_NAME);
   });
 
@@ -195,7 +196,7 @@ describe('registerAllTools — tool names (TOOL-2 / DEC-1)', () => {
     }
   });
 
-  it('tool names for the 10 real ops match the exact DEC-1 set', () => {
+  it('tool names for the 9 real ops match the exact DEC-1 set', () => {
     const EXPECTED = [
       'iLovePDF_compress_pdf',
       'iLovePDF_pdf_to_jpg',

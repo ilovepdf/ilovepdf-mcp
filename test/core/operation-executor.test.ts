@@ -183,3 +183,49 @@ describe('execute — upstream failure (ERR-3)', () => {
     });
   });
 });
+
+describe('execute — password routing', () => {
+  function getProcessBody(fetchMock: ReturnType<typeof vi.fn>): Record<string, unknown> {
+    const call = fetchMock.mock.calls.find(
+      ([url]: [unknown]) => String(url).includes('/v1/process')
+    );
+    return JSON.parse((call![1] as RequestInit).body as string) as Record<string, unknown>;
+  }
+
+  it('sets password on each file object, not top-level, for unlock', async () => {
+    const op = specFor('unlock');
+    const task = makeTask('unlock');
+
+    await execute(op, task, { password: 'secret' });
+
+    const body = getProcessBody(mock.fetchMock);
+    const files = body.files as Array<Record<string, unknown>>;
+    expect(files[0].password).toBe('secret');
+    expect(body.password).toBeUndefined();
+  });
+
+  it('sets password on file objects for any tool (general file-level routing)', async () => {
+    const op = specFor('compress-pdf');
+    const task = makeTask('compress');
+
+    await execute(op, task, { password: 'pw', compression_level: 'low' });
+
+    const body = getProcessBody(mock.fetchMock);
+    const files = body.files as Array<Record<string, unknown>>;
+    expect(files[0].password).toBe('pw');
+    expect(body.password).toBeUndefined();
+    expect(body.compression_level).toBe('low');
+  });
+
+  it('omits password from files when not provided', async () => {
+    const op = specFor('compress-pdf');
+    const task = makeTask('compress');
+
+    await execute(op, task, {});
+
+    const body = getProcessBody(mock.fetchMock);
+    const files = body.files as Array<Record<string, unknown>>;
+    expect(files[0].password).toBeUndefined();
+    expect(body.password).toBeUndefined();
+  });
+});
