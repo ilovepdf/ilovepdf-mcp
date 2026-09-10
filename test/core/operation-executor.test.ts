@@ -192,17 +192,18 @@ describe('execute — password routing', () => {
     return JSON.parse((call![1] as RequestInit).body as string) as Record<string, unknown>;
   }
 
-  it('sets password on each file object, not top-level, for unlock', async () => {
-    const op = specFor('unlock');
-    const task = makeTask('unlock');
-
-    await execute(op, task, { password: 'secret' });
-
-    const body = getProcessBody(mock.fetchMock);
-    const files = body.files as Array<Record<string, unknown>>;
-    expect(files[0].password).toBe('secret');
-    expect(body.password).toBeUndefined();
-  });
+  // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
+  // it('sets password on each file object, not top-level, for unlock', async () => {
+  //   const op = specFor('unlock');
+  //   const task = makeTask('unlock');
+  //
+  //   await execute(op, task, { password: 'secret' });
+  //
+  //   const body = getProcessBody(mock.fetchMock);
+  //   const files = body.files as Array<Record<string, unknown>>;
+  //   expect(files[0].password).toBe('secret');
+  //   expect(body.password).toBeUndefined();
+  // });
 
   it('sets password on file objects for any tool (general file-level routing)', async () => {
     const op = specFor('compress-pdf');
