@@ -206,6 +206,10 @@ Before any log line is emitted, `audit-logger.ts` applies three redaction passes
 
 ## 5. `unlock` operation — password delegation note
 
+> **NOTE:** The `unlock` operation is TEMPORARILY DISABLED — its logic is
+> preserved but commented out and it is not registered as an MCP tool. The
+> note below applies when the tool is re-enabled.
+
 The `unlock` operation does NOT validate the supplied `password` locally. The
 password value is forwarded as-is in the `/process` body to iLovePDF, which
 performs the actual decryption check. The iLovePDF `unlock` tool removes

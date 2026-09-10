@@ -95,7 +95,7 @@ export const pdfToJpgOptionsSchema = z
       .optional()
       .describe(
         'Output image quality. "Normal" = 150 dpi, "High" = 300 dpi. ' +
-        'Case-insensitive (e.g. "normal" → "Normal"). Omit for the iLovePDF default.'
+        'Omit for the iLovePDF default. No other tiers exist.'
       ),
   })
   .passthrough();
@@ -411,7 +411,7 @@ export const OPTIONS_SCHEMAS: Record<OperationName, z.ZodTypeAny> = {
   'office-to-pdf': officeToPdfOptionsSchema,
   'merge-pdf': mergePdfOptionsSchema,
   'split-pdf': splitOptionsSchema,
-  'unlock': unlockOptionsSchema,
+  // 'unlock': unlockOptionsSchema, // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   'watermark': watermarkOptionsSchema,
   'pagenumber': pagenumberOptionsSchema,
   'pdf-ocr': pdfOcrOptionsSchema,

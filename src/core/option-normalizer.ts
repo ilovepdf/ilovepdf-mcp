@@ -46,7 +46,7 @@ const NO_OP_TOOLS = new Set<OperationName>([
   'pdf-to-jpg',
   'office-to-pdf',
   'merge-pdf',
-  'unlock',
+  // 'unlock', // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   'pdf-ocr',
 ]);
 

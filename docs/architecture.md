@@ -122,12 +122,14 @@ Sourced directly from `src/domain/operations.ts`. `requiresSharedTask` means all
 | `office-to-pdf` | `ilovepdf_office_to_pdf` | Convert Word, Excel, and PowerPoint files to PDF | — | — |
 | `merge-pdf` | `ilovepdf_merge_pdf` | Combine multiple PDF files into one | ✓ | — |
 | `split-pdf` | `ilovepdf_split_pdf` | Split a PDF into multiple files by page range or chunks | — | ✓ |
-| `unlock` | `ilovepdf_unlock` | Remove a known password from a PDF | — | — |
 | `watermark` | `ilovepdf_watermark` | Add a text or image watermark to a PDF | — | — |
 | `pagenumber` | `ilovepdf_pagenumber` | Add page numbers to a PDF | — | — |
 | `pdf-ocr` | `ilovepdf_pdf_ocr` | Extract text from scanned PDFs using OCR | — | — |
 
-> `unlock` carries `mustBeDirect: true`, forcing the DIRECT execution path in the executor regardless of the task tool assigned at upload time.
+> **`unlock` is TEMPORARILY DISABLED.** Its logic is preserved but commented out
+> in the source and it is not registered as an MCP tool. When re-enabled it will
+> appear as `ilovepdf_unlock` and carry `mustBeDirect: true`, forcing the DIRECT
+> execution path in the executor regardless of the task tool assigned at upload time.
 
 ---
 

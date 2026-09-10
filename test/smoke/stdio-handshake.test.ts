@@ -9,7 +9,7 @@
  *
  *   (a) the process starts — pid is assigned immediately after spawn
  *   (b) `initialize` returns a valid JSON-RPC result with `serverInfo`
- *   (c) `tools/list` returns exactly 10 tools whose names match the
+ *   (c) `tools/list` returns exactly 9 tools whose names match the
  *       DEC-1 mechanical set (ilovepdf_<snake_case>)
  *   (d) LOG-3 — every line written to the child's stdout is a valid
  *       JSON-RPC 2.0 frame; no non-protocol output leaks through
@@ -40,9 +40,9 @@ const PROJECT_ROOT = path.resolve(path.dirname(__filename), '../../');
 const DIST_ENTRY = path.join(PROJECT_ROOT, 'dist', 'index.js');
 
 // ---------------------------------------------------------------------------
-// DEC-1 mechanical tool name set (10 tools — single source of truth here
-// mirrors src/domain/operations.ts to confirm the handshake returns the
-// canonical set without importing from src/).
+// DEC-1 mechanical tool name set (9 tools — unlock temporarily disabled — single
+// source of truth here mirrors src/domain/operations.ts to confirm the
+// handshake returns the canonical set without importing from src/).
 // ---------------------------------------------------------------------------
 
 const EXPECTED_TOOL_NAMES: ReadonlyArray<string> = [
@@ -52,7 +52,7 @@ const EXPECTED_TOOL_NAMES: ReadonlyArray<string> = [
   'ilovepdf_office_to_pdf',
   'ilovepdf_merge_pdf',
   'ilovepdf_split_pdf',
-  'ilovepdf_unlock',
+  // 'ilovepdf_unlock', // TEMPORARILY DISABLED — re-enable to publish.
   'ilovepdf_watermark',
   'ilovepdf_pagenumber',
   'ilovepdf_pdf_ocr',
@@ -90,7 +90,7 @@ function waitForLines(
         reject(
           new Error(
             `Timeout after ${timeoutMs} ms: expected ≥${count} JSON-RPC line(s) on stdout, ` +
-              `received ${lines.length}.`
+            `received ${lines.length}.`
           )
         );
       } else {
@@ -115,7 +115,7 @@ function findResponseById(
   }
   throw new Error(
     `No JSON-RPC response with id=${targetId} found in stdout lines:\n` +
-      lines.join('\n')
+    lines.join('\n')
   );
 }
 
@@ -246,7 +246,7 @@ describe('stdio handshake smoke test (R6 / LOG-1 / LOG-3)', () => {
       // keep waiting until we find the frame with id=2.
       await waitForLines(stdoutLines, 2, RESPONSE_TIMEOUT);
 
-      // (c) tools/list must return exactly 10 tools matching the DEC-1 set
+      // (c) tools/list must return exactly 9 tools matching the DEC-1 set
       const listResp = findResponseById(stdoutLines, 2);
       expect(listResp['jsonrpc']).toBe('2.0');
       expect(
@@ -257,7 +257,7 @@ describe('stdio handshake smoke test (R6 / LOG-1 / LOG-3)', () => {
       const listResult = listResp['result'] as Record<string, unknown>;
       const tools = listResult['tools'] as Array<Record<string, unknown>>;
       expect(Array.isArray(tools), 'tools must be an array').toBe(true);
-      expect(tools, 'tools/list must return exactly 10 tools').toHaveLength(10);
+      expect(tools, 'tools/list must return exactly 9 tools').toHaveLength(9);
 
       const toolNames = tools.map(t => t['name'] as string);
       for (const expected of EXPECTED_TOOL_NAMES) {
