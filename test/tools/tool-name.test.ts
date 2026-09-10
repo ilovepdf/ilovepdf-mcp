@@ -28,7 +28,7 @@ const EXPECTED: Record<OperationName, string> = {
   'office-to-pdf': 'iLovePDF_office_to_pdf',
   'merge-pdf': 'iLovePDF_merge_pdf',
   'split-pdf': 'iLovePDF_split_pdf',
-  'unlock': 'iLovePDF_unlock',
+  // 'unlock': 'iLovePDF_unlock', // TEMPORARILY DISABLED — re-enable to publish.
   'watermark': 'iLovePDF_watermark',
   'pagenumber': 'iLovePDF_pagenumber',
   'pdf-ocr': 'iLovePDF_pdf_ocr',

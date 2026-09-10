@@ -204,7 +204,7 @@ describe('registerAllTools — tool names (TOOL-2 / DEC-1)', () => {
       'iLovePDF_office_to_pdf',
       'iLovePDF_merge_pdf',
       'iLovePDF_split_pdf',
-      'iLovePDF_unlock',
+      // 'iLovePDF_unlock', // TEMPORARILY DISABLED — re-enable to publish.
       'iLovePDF_watermark',
       'iLovePDF_pagenumber',
       'iLovePDF_pdf_ocr',
