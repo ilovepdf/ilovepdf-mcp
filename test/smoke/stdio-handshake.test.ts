@@ -10,7 +10,7 @@
  *   (a) the process starts — pid is assigned immediately after spawn
  *   (b) `initialize` returns a valid JSON-RPC result with `serverInfo`
  *   (c) `tools/list` returns exactly 9 tools whose names match the
- *       DEC-1 mechanical set (ilovepdf_<snake_case>)
+ *       DEC-1 mechanical set (iLovePDF_<snake_case>)
  *   (d) LOG-3 — every line written to the child's stdout is a valid
  *       JSON-RPC 2.0 frame; no non-protocol output leaks through
  *
@@ -46,16 +46,16 @@ const DIST_ENTRY = path.join(PROJECT_ROOT, 'dist', 'index.js');
 // ---------------------------------------------------------------------------
 
 const EXPECTED_TOOL_NAMES: ReadonlyArray<string> = [
-  'ilovepdf_compress_pdf',
-  'ilovepdf_pdf_to_jpg',
-  'ilovepdf_image_to_pdf',
-  'ilovepdf_office_to_pdf',
-  'ilovepdf_merge_pdf',
-  'ilovepdf_split_pdf',
-  // 'ilovepdf_unlock', // TEMPORARILY DISABLED — re-enable to publish.
-  'ilovepdf_watermark',
-  'ilovepdf_pagenumber',
-  'ilovepdf_pdf_ocr',
+  'iLovePDF_compress_pdf',
+  'iLovePDF_pdf_to_jpg',
+  'iLovePDF_image_to_pdf',
+  'iLovePDF_office_to_pdf',
+  'iLovePDF_merge_pdf',
+  'iLovePDF_split_pdf',
+  // 'iLovePDF_unlock', // TEMPORARILY DISABLED — re-enable to publish.
+  'iLovePDF_watermark',
+  'iLovePDF_pagenumber',
+  'iLovePDF_pdf_ocr',
 ];
 
 // ---------------------------------------------------------------------------

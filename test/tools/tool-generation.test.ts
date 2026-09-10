@@ -24,7 +24,7 @@ const { STUB_OP_NAME, STUB_TOOL_NAME } = vi.hoisted(() => {
   const name = 'stub-test-op';
   return {
     STUB_OP_NAME: name,
-    STUB_TOOL_NAME: `ilovepdf_${name.replace(/-/g, '_')}`,
+    STUB_TOOL_NAME: `iLovePDF_${name.replace(/-/g, '_')}`,
   };
 });
 
@@ -119,7 +119,7 @@ type RawTool = {
 
 /** Read the private _registeredTools map from a McpServer instance. */
 function getTools(server: McpServer): Record<string, RawTool> {
-  return (server as Record<string, unknown>)['_registeredTools'] as Record<
+  return (server as unknown as Record<string, unknown>)['_registeredTools'] as Record<
     string,
     RawTool
   >;
@@ -198,26 +198,26 @@ describe('registerAllTools — tool names (TOOL-2 / DEC-1)', () => {
 
   it('tool names for the 9 real ops match the exact DEC-1 set', () => {
     const EXPECTED = [
-      'ilovepdf_compress_pdf',
-      'ilovepdf_pdf_to_jpg',
-      'ilovepdf_image_to_pdf',
-      'ilovepdf_office_to_pdf',
-      'ilovepdf_merge_pdf',
-      'ilovepdf_split_pdf',
-      // 'ilovepdf_unlock', // TEMPORARILY DISABLED — re-enable to publish.
-      'ilovepdf_watermark',
-      'ilovepdf_pagenumber',
-      'ilovepdf_pdf_ocr',
+      'iLovePDF_compress_pdf',
+      'iLovePDF_pdf_to_jpg',
+      'iLovePDF_image_to_pdf',
+      'iLovePDF_office_to_pdf',
+      'iLovePDF_merge_pdf',
+      'iLovePDF_split_pdf',
+      // 'iLovePDF_unlock', // TEMPORARILY DISABLED — re-enable to publish.
+      'iLovePDF_watermark',
+      'iLovePDF_pagenumber',
+      'iLovePDF_pdf_ocr',
     ];
     for (const name of EXPECTED) {
       expect(Object.keys(tools)).toContain(name);
     }
   });
 
-  it('all tool names match ^ilovepdf_[a-z_]+$', () => {
+  it('all tool names match ^iLovePDF_[a-z_]+$', () => {
     for (const name of Object.keys(tools)) {
       expect(name, `tool name "${name}" must match pattern`).toMatch(
-        /^ilovepdf_[a-z_]+$/
+        /^iLovePDF_[a-z_]+$/
       );
     }
   });

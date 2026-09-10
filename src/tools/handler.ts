@@ -418,14 +418,16 @@ export function makeHandler(op: OperationSpec) {
 
       // unlock: password is required. Without it, iLovePDF returns a cryptic error.
       // Surface a clear message so the LLM can ask the user for the password.
-      if (op.name === 'unlock' && !normalized.password) {
-        throw new ToolError(
-          'VALIDATION_ERROR',
-          'unlock requires a password but none was provided.',
-          'Please provide the PDF password via the "password" option.',
-          false
-        );
-      }
+      // TEMPORARILY DISABLED — unlock tool commented out; re-enable alongside
+      // the 'unlock' OperationName / OPERATIONS entry to re-publish.
+      // if (op.name === 'unlock' && !normalized.password) {
+      //   throw new ToolError(
+      //     'VALIDATION_ERROR',
+      //     'unlock requires a password but none was provided.',
+      //     'Please provide the PDF password via the "password" option.',
+      //     false
+      //   );
+      // }
 
       // watermark image mode: validate image_source is present, resolve it
       // separately (bypassing the .pdf extension check), and upload it alongside
@@ -461,11 +463,13 @@ export function makeHandler(op: OperationSpec) {
 
       // unlock: password must live inside each file entry, not as a top-level
       // process param. The iLovePDF API reads it from ILovePDFFile.password.
-      if (op.name === 'unlock' && normalized.password) {
-        const pw = normalized.password as string;
-        creds.files = creds.files.map(f => ({ ...f, password: pw }));
-        delete normalized.password;
-      }
+      // TEMPORARILY DISABLED — unlock tool commented out; re-enable alongside
+      // the 'unlock' OperationName / OPERATIONS entry to re-publish.
+      // if (op.name === 'unlock' && normalized.password) {
+      //   const pw = normalized.password as string;
+      //   creds.files = creds.files.map(f => ({ ...f, password: pw }));
+      //   delete normalized.password;
+      // }
 
       // watermark image mode: inject the uploaded image's server_filename into
       // the process options so iLovePDF knows which file is the watermark image.

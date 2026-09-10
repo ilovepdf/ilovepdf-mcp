@@ -236,7 +236,10 @@ describe('validateOptions', () => {
     expect((caught as ToolError).code).toBe('VALIDATION_ERROR');
   });
 
-  it('throws ToolError(VALIDATION_ERROR) for unlock with a numeric password', () => {
+  // 'unlock' TEMPORARILY DISABLED — no schema is registered for it, so
+  // validateOptions no-ops instead of throwing; re-enable alongside the
+  // registry entry to re-publish.
+  it.skip('throws ToolError(VALIDATION_ERROR) for unlock with a numeric password', () => {
     let caught: unknown;
     try {
       validateOptions('unlock', { password: 123 });

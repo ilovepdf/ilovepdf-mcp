@@ -187,13 +187,15 @@ describe('execute — upstream failure (ERR-3)', () => {
 describe('execute — password routing', () => {
   function getProcessBody(fetchMock: ReturnType<typeof vi.fn>): Record<string, unknown> {
     const call = fetchMock.mock.calls.find(
-      ([url]: [unknown]) => String(url).includes('/v1/process')
+      (args: unknown[]) => String(args[0]).includes('/v1/process')
     );
     return JSON.parse((call![1] as RequestInit).body as string) as Record<string, unknown>;
   }
 
-  it('sets password on each file object, not top-level, for unlock', async () => {
-    const op = specFor('unlock');
+  // 'unlock' TEMPORARILY DISABLED — specFor('unlock') no longer resolves;
+  // re-enable this test alongside the registry entry to re-publish.
+  it.skip('sets password on each file object, not top-level, for unlock', async () => {
+    const op = specFor('unlock' as unknown as Parameters<typeof specFor>[0]);
     const task = makeTask('unlock');
 
     await execute(op, task, { password: 'secret' });
