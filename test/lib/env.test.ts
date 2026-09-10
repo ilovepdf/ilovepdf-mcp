@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { getEnv, requireEnv, getPublicKey, getWorkdir } from '../../src/lib/env.js';
+import { getEnv, requireEnv, getPublicKey, getWorkdir, getMaxInlineMb, getReturnDownloadUrl } from '../../src/lib/env.js';
 import { ToolError, isToolError } from '../../src/domain/errors.js';
 
 describe('lib/env', () => {
@@ -68,6 +68,54 @@ describe('lib/env', () => {
 
       vi.stubEnv('ILOVEPDF_MCP_WORKDIR', '/tmp/work');
       expect(getWorkdir()).toBe('/tmp/work');
+    });
+  });
+
+  describe('getMaxInlineMb', () => {
+    it('defaults to 10 when ILOVEPDF_MCP_MAX_INLINE_MB is unset', () => {
+      vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', '');
+      expect(getMaxInlineMb()).toBe(10);
+    });
+
+    it('reads and returns the configured MB value', () => {
+      vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', '5');
+      expect(getMaxInlineMb()).toBe(5);
+    });
+
+    it('accepts 0 to disable inline embedding', () => {
+      vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', '0');
+      expect(getMaxInlineMb()).toBe(0);
+    });
+
+    it('falls back to 10 for non-numeric values', () => {
+      vi.stubEnv('ILOVEPDF_MCP_MAX_INLINE_MB', 'bogus');
+      expect(getMaxInlineMb()).toBe(10);
+    });
+  });
+
+  describe('getReturnDownloadUrl', () => {
+    it('defaults to false when ILOVEPDF_MCP_RETURN_DOWNLOAD_URL is unset', () => {
+      vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', '');
+      expect(getReturnDownloadUrl()).toBe(false);
+    });
+
+    it('returns true when the flag is set to "true" (case-insensitive)', () => {
+      vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', 'true');
+      expect(getReturnDownloadUrl()).toBe(true);
+      vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', 'TRUE');
+      expect(getReturnDownloadUrl()).toBe(true);
+    });
+
+    it('returns true when the flag is set to "1"', () => {
+      vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', '1');
+      expect(getReturnDownloadUrl()).toBe(true);
+    });
+
+    it('returns false for any other value', () => {
+      vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', 'yes');
+      expect(getReturnDownloadUrl()).toBe(false);
+      vi.stubEnv('ILOVEPDF_MCP_RETURN_DOWNLOAD_URL', '0');
+      expect(getReturnDownloadUrl()).toBe(false);
     });
   });
 

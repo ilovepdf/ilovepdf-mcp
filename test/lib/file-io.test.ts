@@ -345,6 +345,83 @@ describe('macOS case-insensitive containment', () => {
   );
 });
 
+// --- symlinked ILOVEPDF_MCP_WORKDIR (macOS /var → /private/var pattern) ------
+//
+// On macOS, os.tmpdir() returns /var/folders/... which is a symlink to
+// /private/var/folders/.... loadAllowlist must canonicalize every allowlist
+// root via realpathSync so that a relative-path file access inside that workdir
+// succeeds. The key chain:
+//
+//   1. loadAllowlist canonicalizes the symlinked root → canonical root stored.
+//   2. resolveWithin computes abs = path.resolve(canonical_workdir, relPath)
+//      → abs is already canonical, so the lexical pre-check passes.
+//   3. realpathSync(abs) is also canonical → second containment check passes.
+//
+// Without the fix, the workdir root stays symlinked. Then realpathSync on the
+// file path returns the canonical form, and the second containment check
+// compares canonical-file vs symlinked-root → mismatch → FILE_ACCESS_DENIED.
+
+describe('symlinked ILOVEPDF_MCP_WORKDIR (macOS /var → /private/var pattern)', () => {
+  // Gate: directory symlinks (non-junction) need no elevation on POSIX.
+  // On Windows, symlinkSync for directories requires either Developer Mode or
+  // SeCreateSymbolicLinkPrivilege; we fall back gracefully rather than failing
+  // the suite, so the test is nominally enabled but skips at runtime on
+  // restricted Windows environments.
+  it.runIf(process.platform !== 'win32')(
+    'canonicalizes the symlinked workdir root so a relative-path read is CONTAINED (not denied)',
+    async () => {
+      // Create a fresh isolated base dir (canonical, since we realpathSync it).
+      const base = realpathSync(mkdtempSync(path.join(tmpdir(), 'fio-symroot-')));
+      const realDir = path.join(base, 'real-workdir');
+      const linkDir = path.join(base, 'link-workdir');
+      mkdirSync(realDir, { recursive: true });
+
+      let canCreateSymlink = true;
+      try {
+        // Create a directory symlink: linkDir → realDir.
+        // This simulates the macOS /var/folders/... → /private/var/folders/...
+        // relationship where the configured WORKDIR is the symlink path.
+        symlinkSync(realDir, linkDir);
+      } catch {
+        // Elevated symlink privilege not available — skip gracefully.
+        canCreateSymlink = false;
+      }
+
+      if (!canCreateSymlink) return;
+
+      try {
+        // Write a PDF into the REAL dir; the file is reachable via the symlink.
+        writeFileSync(path.join(realDir, 'test.pdf'), 'PDF-VIA-SYMLINK');
+
+        // Load the allowlist with the SYMLINK path as ILOVEPDF_MCP_WORKDIR.
+        // The fix: loadAllowlist must call realpathSync(linkDir) → realDir.
+        const symlinkAllow = loadAllowlist({
+          ILOVEPDF_MCP_WORKDIR: linkDir,
+        } as NodeJS.ProcessEnv);
+
+        // The stored root must be the CANONICAL form (realDir), not the symlink.
+        // This assertion would fail on the unfixed code (root stays linkDir).
+        expect(symlinkAllow.roots[0]).toBe(realDir);
+        expect(symlinkAllow.defaultWorkdir).toBe(realDir);
+
+        // Reading via a RELATIVE path must resolve entirely in canonical space:
+        //   abs = path.resolve(realDir, 'test.pdf') = realDir/test.pdf (canonical)
+        //   real = realpathSync(abs)                = realDir/test.pdf (same)
+        //   isContainedInAny(real, [realDir])        = true  ✓
+        //
+        // On the unfixed code, defaultWorkdir = linkDir, so abs = linkDir/test.pdf
+        // (symlinked), real = realDir/test.pdf (canonical), and
+        // isContainedInAny(realDir/test.pdf, [linkDir]) = false → FILE_ACCESS_DENIED.
+        const file = await readInputFile('test.pdf', symlinkAllow);
+        expect(file.filename).toBe('test.pdf');
+        expect(Buffer.from(file.bytes).toString()).toBe('PDF-VIA-SYMLINK');
+      } finally {
+        rmSync(base, { recursive: true, force: true });
+      }
+    }
+  );
+});
+
 // --- deriveOutputFilename --------------------------------------------------
 
 describe('deriveOutputFilename', () => {
@@ -379,5 +456,30 @@ describe('deriveOutputFilename', () => {
     expect(
       deriveOutputFilename(opFor('compress'), ['https://x.com/files/big.pdf'], '')
     ).toBe('big-compress.pdf');
+  });
+
+  // Data-safety: collision-avoidance (default output must never equal input).
+  it('falls back to <stem>-<apiTool>.<ext> when upstream name matches any source basename', () => {
+    // The upstream name "doc.pdf" is the same as source basename "doc.pdf".
+    // Derivation must fall back to "doc-compress.pdf" to prevent overwriting the input.
+    expect(
+      deriveOutputFilename(opFor('compress'), ['/work/doc.pdf'], 'doc.pdf')
+    ).toBe('doc-compress.pdf');
+  });
+
+  it('does NOT fall back when upstream name differs from all source basenames', () => {
+    // "result.pdf" != "doc.pdf" → upstream name is used as-is.
+    expect(
+      deriveOutputFilename(opFor('compress'), ['/work/doc.pdf'], 'result.pdf')
+    ).toBe('result.pdf');
+  });
+
+  it('collision detection is case-insensitive on all platforms (safety-first)', () => {
+    // Source is "Doc.pdf", upstream is "doc.pdf" (different case).
+    // On case-insensitive filesystems (Windows/macOS) these are the same file;
+    // the fallback fires to be safe.
+    const result = deriveOutputFilename(opFor('compress'), ['/work/Doc.pdf'], 'doc.pdf');
+    // The fallback uses the stem from the source ("Doc" → "Doc-compress.pdf").
+    expect(result).toBe('Doc-compress.pdf');
   });
 });

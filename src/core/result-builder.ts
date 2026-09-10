@@ -5,10 +5,17 @@
  * Given an `ExecuteResult` from the operation-executor, it:
  *   1. Downloads the produced file from `exec.download_url` (fetch → arrayBuffer).
  *   2. Derives the output filename (or honors an explicit `output_path`).
- *   3. Resolves + writes the destination through the allowlisted `lib/file-io`.
- *   4. Computes metrics (input/output bytes, ratio, wall-clock duration).
- *   5. Assembles the LOCKED `structuredContent` (TOOL-5) plus one concise,
- *      per-op-family markdown `content` block (TOOL-7).
+ *   3. Checks the resolved output path does NOT equal any input source path
+ *      (data-safety: never overwrite an input by default). Throws VALIDATION_ERROR
+ *      if a collision is detected — no bytes are written.
+ *   4. Resolves + writes the destination through the allowlisted `lib/file-io`.
+ *   5. Computes metrics (input/output bytes, ratio, wall-clock duration).
+ *   6. Assembles the LOCKED `structuredContent` (TOOL-5) plus a content array:
+ *      - Always: one concise per-op-family markdown text block (TOOL-7).
+ *      - Always: one `resource_link` block pointing to the local output file.
+ *      - When output size ≤ ILOVEPDF_MCP_MAX_INLINE_MB: one `resource` block
+ *        embedding the output bytes as a base64 blob so the client can read the
+ *        file without a separate filesystem access.
  *
  * It composes `lib/file-io.ts` and takes NO transport dependency.
  *
@@ -20,6 +27,11 @@
  * never carry the credential. The raw (tokenized) URL is used ONLY for the
  * download fetch and is never logged (the audit logger redacts it regardless).
  *
+ * When `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL=true`, the raw tokenized URL IS
+ * returned in `structuredContent.output.download_url`. The audit-logger redacts
+ * `?token=` in log lines regardless of this flag — only the client-facing
+ * structuredContent carries the token when the flag is on.
+ *
  * ## R1 — non-OK download → typed error
  * A network failure or non-2xx download response throws
  * `ToolError('UPSTREAM_ERROR', …, retryable:true)` — the caller can retry.
@@ -29,6 +41,8 @@
  * for the SSRF-5/4/3/2/1 defence chain.
  */
 
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { ToolError } from '../domain/errors.js';
 import type { OperationSpec } from '../domain/operation-types.js';
 import type { ExecuteResult } from './operation-executor.js';
@@ -39,10 +53,50 @@ import {
   type Allowlist,
 } from '../lib/file-io.js';
 import { safeFetch, type SafeFetchOptions } from '../lib/url-guard.js';
+import { getEmbedResult, getMaxInlineMb, getReturnDownloadUrl } from '../lib/env.js';
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
+
+/** Text content block — always present as the first content item. */
+type TextResultBlock = { type: 'text'; text: string };
+
+/**
+ * Embedded resource block — the output file bytes as a base64 blob.
+ * Structurally compatible with the MCP SDK's `EmbeddedResource` (BlobResourceContents).
+ * Only included when the output size is within the configured cap.
+ */
+type EmbeddedResourceBlock = {
+  type: 'resource';
+  resource: {
+    /** file:// URI of the local output path. */
+    uri: string;
+    /** MIME type: application/pdf, application/zip, image/jpeg, etc. */
+    mimeType: string;
+    /** Base64-encoded output bytes. */
+    blob: string;
+  };
+};
+
+/**
+ * Resource link block — file URI + metadata without bytes.
+ * Structurally compatible with the MCP SDK's `ResourceLink`.
+ * Always included so clients that do not render embedded blobs still get a
+ * clickable / addressable reference to the local output file.
+ */
+type ResourceLinkBlock = {
+  type: 'resource_link';
+  /** file:// URI of the local output path. */
+  uri: string;
+  /** Output filename (basename only). */
+  name: string;
+  /** MIME type matching the embedded resource block. */
+  mimeType: string;
+};
+
+/** Union of all content block types that buildResult may emit. */
+export type ResultContentBlock = TextResultBlock | EmbeddedResourceBlock | ResourceLinkBlock;
 
 /** Everything the builder needs to turn an ExecuteResult into a tool result. */
 export interface BuildResultInput {
@@ -63,6 +117,13 @@ export interface BuildResultInput {
   allow: Allowlist;
   /** Wall-clock start time (`Date.now()`) used to compute `durationMs`. */
   startedAt: number;
+  /**
+   * Canonical absolute paths of local input source files. Used for the
+   * overwrite-protection guard: if the resolved output path equals any of
+   * these, `buildResult` throws VALIDATION_ERROR before writing anything.
+   * URL sources have no local path and must be omitted from this list.
+   */
+  resolvedLocalPaths?: string[];
 }
 
 /** The LOCKED success `structuredContent` (validates against RESULT_OUTPUT_SHAPE). */
@@ -74,9 +135,20 @@ export interface ResultStructuredContent {
   metrics: { inputBytes: number; outputBytes: number; ratio: number; durationMs: number };
 }
 
-/** An MCP tool result: one markdown `content` block + `structuredContent`. */
+/** An MCP tool result: content blocks + `structuredContent`. */
 export interface ToolCallResult {
-  content: Array<{ type: 'text'; text: string }>;
+  /**
+   * Content blocks returned to the client:
+   *   [0] Always: text/markdown operation summary (TOOL-7).
+   *   [1]? Embedded resource blob — only when ILOVEPDF_MCP_EMBED_RESULT=true AND
+   *        output ≤ ILOVEPDF_MCP_MAX_INLINE_MB (and cap > 0).
+   *   [last]? resource_link — only when ILOVEPDF_MCP_EMBED_RESULT=true.
+   *
+   * By default (flag off) the content array is text-only — maximally client-compatible
+   * (Claude Desktop rejects embedded non-text resources). Set ILOVEPDF_MCP_EMBED_RESULT=true
+   * for clients that support embedded blobs, such as MCP Inspector.
+   */
+  content: ResultContentBlock[];
   structuredContent: ResultStructuredContent;
 }
 
@@ -192,6 +264,61 @@ function stripCredential(rawUrl: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Overwrite protection (data-safety)
+// ---------------------------------------------------------------------------
+
+/**
+ * Case-fold on Windows (NTFS) and macOS (APFS/HFS+, case-insensitive by
+ * default). Linux remains case-sensitive to match genuinely case-sensitive mounts.
+ * Mirrors the same constant used in lib/file-io.ts for consistency.
+ */
+const isCaseInsensitivePlatform = process.platform === 'win32' || process.platform === 'darwin';
+
+/**
+ * True when two absolute paths refer to the same filesystem location,
+ * accounting for case-insensitive filesystems (Windows / macOS).
+ */
+function pathsAreEquivalent(a: string, b: string): boolean {
+  const n = (p: string): string => {
+    const normalized = path.normalize(p);
+    return isCaseInsensitivePlatform ? normalized.toLowerCase() : normalized;
+  };
+  return n(a) === n(b);
+}
+
+// ---------------------------------------------------------------------------
+// Content helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive the MIME type from the output file extension.
+ * Covers the three output shapes this server produces:
+ *   • .pdf  → application/pdf
+ *   • .zip  → application/zip (multi-file archive from split-pdf / pdf-to-jpg)
+ *   • .jpg  → image/jpeg (single-image output, edge case)
+ */
+function mimeTypeFor(filePath: string): string {
+  switch (path.extname(filePath).toLowerCase()) {
+    case '.pdf':
+      return 'application/pdf';
+    case '.zip':
+      return 'application/zip';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.png':
+      return 'image/png';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
+/** Convert an absolute local path to a `file://` URI (handles Windows drive letters). */
+function toFileUri(absPath: string): string {
+  return pathToFileURL(absPath).toString();
+}
+
+// ---------------------------------------------------------------------------
 // Metrics + formatting
 // ---------------------------------------------------------------------------
 
@@ -238,8 +365,9 @@ function summarize(
       return `Merged ${inputCount} PDFs into one. ${at}`;
     case 'split-pdf':
       return `Split PDF into ${output.fileCount} file${plural(output.fileCount)}. ${at}`;
-    case 'unlock':
-      return `Unlocked ${inputCount} PDF${plural(inputCount)}. ${at}`;
+    // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
+    // case 'unlock':
+    //   return `Unlocked ${inputCount} PDF${plural(inputCount)}. ${at}`;
     case 'watermark':
       return `Added a watermark to ${inputCount} PDF${plural(inputCount)}. ${at}`;
     case 'pagenumber':
@@ -257,9 +385,22 @@ function summarize(
 
 /**
  * Download the produced file, persist it inside the allowlist, and assemble the
- * LOCKED success result (structuredContent + one markdown block).
+ * LOCKED success result (structuredContent + content blocks).
+ *
+ * Content array layout:
+ *   [0]     Text block — op summary (TOOL-7). Always present and always first.
+ *   [1]?    EmbeddedResource blob — only when ILOVEPDF_MCP_EMBED_RESULT=true AND
+ *           outputBytes ≤ ILOVEPDF_MCP_MAX_INLINE_MB (and cap > 0).
+ *   [last]? ResourceLink — only when ILOVEPDF_MCP_EMBED_RESULT=true (always present
+ *           within that mode, even when the blob is omitted due to the cap).
+ *
+ * Default (ILOVEPDF_MCP_EMBED_RESULT unset / false): content is TEXT-ONLY.
+ * This is the maximally client-compatible default — Claude Desktop rejects tool
+ * results that contain embedded resources with non-text MIME types. Enable
+ * ILOVEPDF_MCP_EMBED_RESULT=true only for clients that support them (e.g. MCP Inspector).
  *
  * @throws ToolError('UPSTREAM_ERROR', retryable:true)  non-OK download (R1)
+ * @throws ToolError('VALIDATION_ERROR', retryable:false) output would overwrite an input
  * @throws ToolError('FILE_ACCESS_DENIED' | 'INTERNAL') from file-io on write
  */
 export async function buildResult(params: BuildResultInput): Promise<ToolCallResult> {
@@ -276,11 +417,27 @@ export async function buildResult(params: BuildResultInput): Promise<ToolCallRes
   const upstreamFilename = isMultiFile ? '' : exec.output_filename;
   const derivedName = deriveOutputFilename(op, sources, upstreamFilename);
 
-  // 3. Resolve (allowlist-validated) + write.
+  // 3. Resolve (allowlist-validated) output path.
   const absPath = resolveOutputPath(params.output_path, derivedName, allow);
+
+  // 4. DATA SAFETY — overwrite guard. Reject before any write if the resolved
+  //    output path would clobber a local input source. Applies to both explicit
+  //    output_path and default derivation.
+  for (const srcPath of (params.resolvedLocalPaths ?? [])) {
+    if (pathsAreEquivalent(absPath, srcPath)) {
+      throw new ToolError(
+        'VALIDATION_ERROR',
+        `Resolved output path "${absPath}" equals input source "${srcPath}" — would overwrite the input.`,
+        'output_path would overwrite an input file; choose a different destination',
+        false
+      );
+    }
+  }
+
+  // 5. Write the bytes to disk.
   const written = await writeOutputFile(absPath, buffer);
 
-  // 4. Metrics. Prefer the caller's measured input bytes; fall back to the
+  // 6. Metrics. Prefer the caller's measured input bytes; fall back to the
   //    upstream KB figure for URL sources. Guard divide-by-zero on ratio.
   const inputBytes =
     params.inputBytes > 0
@@ -296,10 +453,16 @@ export async function buildResult(params: BuildResultInput): Promise<ToolCallRes
     durationMs: Date.now() - startedAt,
   };
 
-  // 5. Assemble. DEC-4: the returned download_url is host+path only.
+  // 7. Assemble structuredContent. DEC-4: by default the returned download_url
+  //    is host+path only (token stripped). When ILOVEPDF_MCP_RETURN_DOWNLOAD_URL
+  //    is true, the raw tokenized URL is returned so the client can download the
+  //    file directly. The audit-logger always redacts ?token= in logs.
+  const returnRawUrl = getReturnDownloadUrl();
+  const download_url = returnRawUrl ? exec.download_url : stripCredential(exec.download_url);
+
   const output = {
     path: written.path,
-    download_url: stripCredential(exec.download_url),
+    download_url,
     bytes: written.bytes,
     fileCount: exec.file_count,
   };
@@ -316,8 +479,58 @@ export async function buildResult(params: BuildResultInput): Promise<ToolCallRes
     metrics,
   };
 
-  return {
-    content: [{ type: 'text', text: summarize(op, sources.length, metrics, output) }],
-    structuredContent,
+  // 8. Build content array:
+  //    [0]     Text/markdown summary (TOOL-7) — always first.
+  //    [1]?    Embedded blob resource — only when ILOVEPDF_MCP_EMBED_RESULT=true
+  //            AND output is within the size cap (cap > 0 and bytes ≤ cap).
+  //    [last]? Resource link — only when ILOVEPDF_MCP_EMBED_RESULT=true. Within
+  //            that mode it is always appended, even when the blob is omitted.
+  //
+  // Default (flag off): text-only content — maximally client-compatible. Claude
+  // Desktop rejects tool results that include embedded non-text resources. Enable
+  // ILOVEPDF_MCP_EMBED_RESULT=true only for clients that support them (e.g. MCP Inspector).
+  //
+  // When ILOVEPDF_MCP_RETURN_DOWNLOAD_URL is true, append the tokenized URL to
+  // the text block so MCP clients that surface text (e.g. Claude Desktop) show a
+  // clickable download link. The URL used here is the SAME tokenized URL already
+  // placed in structuredContent.output.download_url (DEC-4: only when flag is on).
+  const summaryText = summarize(op, sources.length, metrics, output);
+  const textBlock: TextResultBlock = {
+    type: 'text',
+    text: returnRawUrl ? `${summaryText}\n\nDownload: ${download_url}` : summaryText,
   };
+
+  const content: ResultContentBlock[] = [textBlock];
+
+  // Only add the embedded resource and resource_link when ILOVEPDF_MCP_EMBED_RESULT is on.
+  if (getEmbedResult()) {
+    const fileUri = toFileUri(written.path);
+    const mimeType = mimeTypeFor(written.path);
+
+    // Cap in bytes (0 → blob disabled, but resource_link is still added).
+    const maxInlineMb = getMaxInlineMb();
+    const maxInlineBytes = maxInlineMb * 1024 * 1024;
+
+    // Include the embedded blob only when within the cap (cap > 0 and size fits).
+    if (maxInlineBytes > 0 && outputBytes <= maxInlineBytes) {
+      const blob = Buffer.from(buffer).toString('base64');
+      const embeddedBlock: EmbeddedResourceBlock = {
+        type: 'resource',
+        resource: { uri: fileUri, mimeType, blob },
+      };
+      content.push(embeddedBlock);
+    }
+
+    // Resource link is always added last within embed mode so clients that do not
+    // render blobs still have an addressable reference to the local output file.
+    const linkBlock: ResourceLinkBlock = {
+      type: 'resource_link',
+      uri: fileUri,
+      name: path.basename(written.path),
+      mimeType,
+    };
+    content.push(linkBlock);
+  }
+
+  return { content, structuredContent };
 }

@@ -122,12 +122,14 @@ Sourced directly from `src/domain/operations.ts`. `requiresSharedTask` means all
 | `office-to-pdf` | `ilovepdf_office_to_pdf` | Convert Word, Excel, and PowerPoint files to PDF | — | — |
 | `merge-pdf` | `ilovepdf_merge_pdf` | Combine multiple PDF files into one | ✓ | — |
 | `split-pdf` | `ilovepdf_split_pdf` | Split a PDF into multiple files by page range or chunks | — | ✓ |
-| `unlock` | `ilovepdf_unlock` | Remove a known password from a PDF | — | — |
 | `watermark` | `ilovepdf_watermark` | Add a text or image watermark to a PDF | — | — |
 | `pagenumber` | `ilovepdf_pagenumber` | Add page numbers to a PDF | — | — |
 | `pdf-ocr` | `ilovepdf_pdf_ocr` | Extract text from scanned PDFs using OCR | — | — |
 
-> `unlock` carries `mustBeDirect: true`, forcing the DIRECT execution path in the executor regardless of the task tool assigned at upload time.
+> **`unlock` is TEMPORARILY DISABLED.** Its logic is preserved but commented out
+> in the source and it is not registered as an MCP tool. When re-enabled it will
+> appear as `ilovepdf_unlock` and carry `mustBeDirect: true`, forcing the DIRECT
+> execution path in the executor regardless of the task tool assigned at upload time.
 
 ---
 
@@ -237,22 +239,52 @@ All error paths throw a typed `ToolError` carrying a stable `ErrorCode`, an inte
 
 ## 8. Result contract (success)
 
-The result builder assembles the LOCKED `structuredContent` shape (TOOL-5) plus one operation-specific markdown `content` block (TOOL-7). The `download_url` value in `structuredContent.output` has the `?token=` query string stripped before it leaves the server (DEC-4 — credential never returned to client).
+The result builder assembles the LOCKED `structuredContent` shape (TOOL-5) plus a `content` array with the following layout:
+
+| Index | Type | Present | Description |
+|---|---|:---:|---|
+| 0 | `text` | Always | Concise markdown op summary (sizes, file count, absolute path). |
+| 1 | `resource` | Only when `ILOVEPDF_MCP_EMBED_RESULT=true` **and** output ≤ `ILOVEPDF_MCP_MAX_INLINE_MB` | Embedded blob (base64 of the output file). |
+| last | `resource_link` | Only when `ILOVEPDF_MCP_EMBED_RESULT=true` | `file://` URI + filename + MIME type. Present within embed mode even when the blob is omitted due to the cap. |
+
+**Default content is text-only.** By default, the `content` array contains only the text block (index 0). This is the maximally client-compatible default: some clients — notably Claude Desktop — reject tool results that include embedded resources with non-text MIME types (e.g. `application/pdf`), returning a "media_type not allowed" error for the entire tool response. Set `ILOVEPDF_MCP_EMBED_RESULT=true` to also include the embedded blob and resource_link for clients that support them (e.g. MCP Inspector).
+
+**`structuredContent.output.download_url`** has the `?token=` query string stripped before it leaves the server (DEC-4 — credential never returned to client). Set `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL=true` to return the raw tokenized URL instead (see security.md §4.5 for the trade-off).
+
+**Never-overwrite guarantee:** if the resolved output path would equal any resolved local input source path, `buildResult` throws `VALIDATION_ERROR` before writing a single byte. Additionally, `deriveOutputFilename` detects when the upstream filename equals an input basename and falls back to the `<stem>-<apiTool>.<ext>` pattern so the default output always differs from the input.
 
 ```jsonc
+// structuredContent (always present)
 {
-  "operation": "compress-pdf",              // registry name (kebab-case)
+  "operation": "compress-pdf",
   "status": "completed",
   "input":   { "sources": ["/abs/in.pdf"], "count": 1, "totalBytes": 2516582 },
-  "output":  { "path": "/abs/out.pdf",
+  "output":  { "path": "/abs/in-compress.pdf",
                "download_url": "https://api7.ilovepdf.com/v1/download/…",
                "bytes": 1153433, "fileCount": 1 },
   "metrics": { "inputBytes": 2516582, "outputBytes": 1153433,
                "ratio": 0.458, "durationMs": 812 }
 }
+
+// content[0] — text block (always present — default content is text-only)
+{ "type": "text", "text": "Compressed 1 PDF: 2.4 MB → 1.1 MB (54% smaller). Saved to `/abs/in-compress.pdf`." }
+
+// content[1] — embedded resource (only when ILOVEPDF_MCP_EMBED_RESULT=true AND output ≤ cap)
+{ "type": "resource", "resource": { "uri": "file:///abs/in-compress.pdf", "mimeType": "application/pdf", "blob": "<base64>" } }
+
+// content[last] — resource link (only when ILOVEPDF_MCP_EMBED_RESULT=true)
+{ "type": "resource_link", "uri": "file:///abs/in-compress.pdf", "name": "in-compress.pdf", "mimeType": "application/pdf" }
 ```
 
 The same `RESULT_OUTPUT_SHAPE` (`contract/result-schema.ts`) is the `outputSchema` for every registered tool. The SDK validates `structuredContent` against it before returning to the client, enforcing the LOCKED contract at runtime.
+
+**Environment variables for result behavior:**
+
+| Env var | Default | Description |
+|---|---|---|
+| `ILOVEPDF_MCP_EMBED_RESULT` | `false` | When `true` or `1`, appends an embedded `resource` blob and `resource_link` to the `content` array. Off by default for Claude Desktop compatibility. Enable for clients that support embedded resources (e.g. MCP Inspector). |
+| `ILOVEPDF_MCP_MAX_INLINE_MB` | `10` | Max output size (MB) to embed as a base64 blob (applies only when `ILOVEPDF_MCP_EMBED_RESULT=true`). Set `0` to suppress the blob while keeping the `resource_link`. |
+| `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL` | `false` | When `true`, returns the raw tokenized `download_url` in `structuredContent.output`. |
 
 ---
 
