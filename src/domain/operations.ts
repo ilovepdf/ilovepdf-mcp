@@ -114,17 +114,25 @@ export const OPERATIONS = {
     optionsSchema: OPTIONS_SCHEMAS['split-pdf'],
   },
 
-  'unlock': {
-    name: 'unlock',
-    apiTool: 'unlock',
-    label: 'Unlock PDF',
-    description: 'Remove a known password from a PDF.',
-    acceptedExtensions: ['.pdf'],
-    defaultOptions: {},
-    requiresSharedTask: false,
-    mustBeDirect: true,
-    optionsSchema: OPTIONS_SCHEMAS['unlock'],
-  },
+  /*
+   * TEMPORARILY DISABLED — the `unlock` tool is commented out and no longer
+   * registered/exposed. All logic is preserved; uncomment this block (and the
+   * matching entries in operation-types.ts, options-schema.ts,
+   * option-normalizer.ts, result-builder.ts, descriptions.ts, and
+   * ilovepdf-api.ts) to re-enable and publish it.
+   *
+   * 'unlock': {
+   *   name: 'unlock',
+   *   apiTool: 'unlock',
+   *   label: 'Unlock PDF',
+   *   description: 'Remove a known password from a PDF.',
+   *   acceptedExtensions: ['.pdf'],
+   *   defaultOptions: {},
+   *   requiresSharedTask: false,
+   *   mustBeDirect: true,
+   *   optionsSchema: OPTIONS_SCHEMAS['unlock'],
+   * },
+   */
 
   'watermark': {
     name: 'watermark',

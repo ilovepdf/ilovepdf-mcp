@@ -86,5 +86,5 @@ Expected: the tool runs and reports the size reduction and the output path. With
 
 - **Local files:** the server reads/writes files under the workdir (or `ALLOWED_DIRS`). Inputs may also be `https://` URLs. It never overwrites an input file.
 - **Multi-file outputs** (`split_pdf`, `pdf_to_jpg`) are saved as a single `.zip`.
-- **10 tools:** compress, pdf-to-jpg, image-to-pdf, office-to-pdf, merge, split, unlock, watermark, pagenumber, pdf-ocr.
+- **9 tools:** compress, pdf-to-jpg, image-to-pdf, office-to-pdf, merge, split, watermark, pagenumber, pdf-ocr. (`unlock` is temporarily disabled — its code is preserved but commented out.)
 - **Verified clients:** Claude Desktop, MCP Inspector, opencode.

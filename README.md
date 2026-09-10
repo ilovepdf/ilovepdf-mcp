@@ -65,10 +65,16 @@ All file access is deny-by-default. Inputs and outputs must resolve to a path in
 | `ilovepdf_office_to_pdf` | Convert Word, Excel, or PowerPoint to PDF |
 | `ilovepdf_merge_pdf` | Combine multiple PDFs into one |
 | `ilovepdf_split_pdf` | Split a PDF by page range or fixed chunks (output: `.zip`) |
-| `ilovepdf_unlock` | Remove password and permission restrictions from a PDF via iLovePDF (owner-restricted PDFs are unlocked regardless of the supplied password) |
 | `ilovepdf_watermark` | Add a text or image watermark to a PDF |
 | `ilovepdf_pagenumber` | Add page numbers to a PDF |
 | `ilovepdf_pdf_ocr` | Extract text from scanned PDFs using OCR |
+
+> **Note:** `ilovepdf_unlock` (remove password/permission restrictions from a PDF) is **temporarily disabled**. Its code is preserved but commented out, so it is not registered as a tool for now. It may be re-enabled in a future release.
+
+<!--
+Temporarily disabled — re-enable this row when the unlock tool is published again:
+| `ilovepdf_unlock` | Remove password and permission restrictions from a PDF via iLovePDF (owner-restricted PDFs are unlocked regardless of the supplied password) |
+-->
 
 > **Multi-file outputs:** `ilovepdf_split_pdf` and `ilovepdf_pdf_to_jpg` return multiple files. The server saves them as a single `.zip` archive — it does **not** extract the archive automatically.
 

@@ -74,7 +74,7 @@ export const pdfToJpgOptionsSchema = z
       .optional()
       .describe(
         'Output image quality. "Normal" = 150 dpi, "High" = 300 dpi. ' +
-          'Omit for the iLovePDF default. No other tiers exist.'
+        'Omit for the iLovePDF default. No other tiers exist.'
       ),
   })
   .passthrough();
@@ -195,7 +195,7 @@ export const splitOptionsSchema = z
       .optional()
       .describe(
         'Page ranges when split_mode="ranges". E.g., "1-3,4-6,7-end". ' +
-          '"first" and "last" keywords are valid (e.g., "first-5", "6-last").'
+        '"first" and "last" keywords are valid (e.g., "first-5", "6-last").'
       ),
     remove_pages: z
       .string()
@@ -357,12 +357,12 @@ export const pdfOcrOptionsSchema = z
       .optional()
       .describe(
         'OCR language codes. E.g., ["eng"], ["spa", "eng"]. Default: ["eng"]. ' +
-          'Full list: eng, afr, amh, ara, asm, aze, bel, ben, bod, bos, bul, ' +
-          'cat, ces, chi_sim, chi_tra, dan, deu, ell, epo, est, eus, fas, fil, ' +
-          'fin, fra, gla, gle, glg, guj, heb, hin, hrv, hun, hye, ind, isl, ita, ' +
-          'jpn, kan, kat, kaz, khm, kor, lao, lat, lav, lit, mal, mar, mkd, mlt, ' +
-          'mon, msa, mya, nep, nld, nor, pan, pol, por, ron, rus, sin, slk, slv, ' +
-          'spa, sqi, srp, swa, swe, tam, tel, tgl, tha, tur, ukr, urd, vie, yid'
+        'Full list: eng, afr, amh, ara, asm, aze, bel, ben, bod, bos, bul, ' +
+        'cat, ces, chi_sim, chi_tra, dan, deu, ell, epo, est, eus, fas, fil, ' +
+        'fin, fra, gla, gle, glg, guj, heb, hin, hrv, hun, hye, ind, isl, ita, ' +
+        'jpn, kan, kat, kaz, khm, kor, lao, lat, lav, lit, mal, mar, mkd, mlt, ' +
+        'mon, msa, mya, nep, nld, nor, pan, pol, por, ron, rus, sin, slk, slv, ' +
+        'spa, sqi, srp, swa, swe, tam, tel, tgl, tha, tur, ukr, urd, vie, yid'
       ),
   })
   .passthrough();
@@ -388,7 +388,7 @@ export const OPTIONS_SCHEMAS: Record<OperationName, z.ZodTypeAny> = {
   'office-to-pdf': officeToPdfOptionsSchema,
   'merge-pdf': mergePdfOptionsSchema,
   'split-pdf': splitOptionsSchema,
-  'unlock': unlockOptionsSchema,
+  // 'unlock': unlockOptionsSchema, // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   'watermark': watermarkOptionsSchema,
   'pagenumber': pagenumberOptionsSchema,
   'pdf-ocr': pdfOcrOptionsSchema,
