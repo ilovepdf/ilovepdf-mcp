@@ -418,7 +418,8 @@ export function makeHandler(op: OperationSpec) {
 
       // unlock: password is required. Without it, iLovePDF returns a cryptic error.
       // Surface a clear message so the LLM can ask the user for the password.
-      // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
+      // TEMPORARILY DISABLED — unlock tool commented out; re-enable alongside
+      // the 'unlock' OperationName / OPERATIONS entry to re-publish.
       // if (op.name === 'unlock' && !normalized.password) {
       //   throw new ToolError(
       //     'VALIDATION_ERROR',
@@ -462,7 +463,8 @@ export function makeHandler(op: OperationSpec) {
 
       // unlock: password must live inside each file entry, not as a top-level
       // process param. The iLovePDF API reads it from ILovePDFFile.password.
-      // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
+      // TEMPORARILY DISABLED — unlock tool commented out; re-enable alongside
+      // the 'unlock' OperationName / OPERATIONS entry to re-publish.
       // if (op.name === 'unlock' && normalized.password) {
       //   const pw = normalized.password as string;
       //   creds.files = creds.files.map(f => ({ ...f, password: pw }));

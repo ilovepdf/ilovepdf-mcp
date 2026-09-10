@@ -119,7 +119,7 @@ type RawTool = {
 
 /** Read the private _registeredTools map from a McpServer instance. */
 function getTools(server: McpServer): Record<string, RawTool> {
-  return (server as Record<string, unknown>)['_registeredTools'] as Record<
+  return (server as unknown as Record<string, unknown>)['_registeredTools'] as Record<
     string,
     RawTool
   >;
