@@ -34,7 +34,7 @@ const CAPABILITY: Record<OperationName, string> = {
   'office-to-pdf': 'Convert a Word, Excel, or PowerPoint document into a PDF.',
   'merge-pdf': 'Combine several PDFs into one merged PDF.',
   'split-pdf': 'Split a PDF into multiple files by page range or fixed chunks.',
-  'unlock': 'Remove a known password from a protected PDF.',
+  // 'unlock': 'Remove a known password from a protected PDF.', // TEMPORARILY DISABLED — re-enable to publish.
   'watermark': 'Stamp a text or image watermark onto a PDF.',
   'pagenumber': 'Add page numbers to a PDF.',
   'pdf-ocr': 'Run OCR on a scanned PDF to make its text selectable and searchable.',

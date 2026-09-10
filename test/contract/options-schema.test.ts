@@ -30,7 +30,7 @@ const ALL_OPS: OperationName[] = [
   'office-to-pdf',
   'merge-pdf',
   'split-pdf',
-  'unlock',
+  // 'unlock', // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   'watermark',
   'pagenumber',
   'pdf-ocr',
@@ -52,7 +52,7 @@ describe('OPTIONS_SCHEMAS', () => {
       'office-to-pdf': {},
       'merge-pdf': {},
       'split-pdf': { split_mode: 'ranges', ranges: '1-3,4-6' },
-      'unlock': { password: 'secret' },
+      // 'unlock': { password: 'secret' }, // TEMPORARILY DISABLED — re-enable to publish.
       'watermark': { mode: 'text', text: 'DRAFT', transparency: 50 },
       'pagenumber': { pages: 'all', starting_number: 1 },
       'pdf-ocr': { ocr_languages: ['eng', 'spa'] },
