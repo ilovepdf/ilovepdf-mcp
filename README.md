@@ -5,7 +5,7 @@ MCP server for [iLovePDF](https://www.ilovepdf.com/) — gives any MCP client (C
 ## Requirements
 
 - Node.js >= 18
-- An iLovePDF public API key — obtain one at <https://developer.ilovepdf.com/>
+- An iLovePDF public API key — obtain one at <https://www.iloveapi.com/>
 
 ## Quick start
 
