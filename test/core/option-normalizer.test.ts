@@ -38,6 +38,28 @@ describe('normalizeOptions — purity', () => {
     expect(options).not.toBe(input);
     expect(warnings).toEqual([]);
   });
+
+  it('is a no-op for pdf-ocr (NO_OP_TOOLS)', () => {
+    const input = { ocr_languages: ['eng'] };
+    const { options, warnings } = normalizeOptions('pdf-ocr', input);
+    expect(options).toEqual(input);
+    expect(options).not.toBe(input);
+    expect(warnings).toEqual([]);
+  });
+
+  it('is a no-op for unlock (NO_OP_TOOLS)', () => {
+    const input = { password: 'secret' };
+    const { options, warnings } = normalizeOptions('unlock', input);
+    expect(options).toEqual(input);
+    expect(options).not.toBe(input);
+    expect(warnings).toEqual([]);
+  });
+
+  it('is a no-op for office-to-pdf (NO_OP_TOOLS)', () => {
+    const { options, warnings } = normalizeOptions('office-to-pdf', {});
+    expect(options).toEqual({});
+    expect(warnings).toEqual([]);
+  });
 });
 
 describe('normalizeOptions — split-pdf range normalization (end → 9999)', () => {

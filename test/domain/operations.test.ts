@@ -35,7 +35,7 @@ const EXPECTED_API_TOOL: Record<OperationName, ApiTool> = {
   'office-to-pdf': 'officepdf',
   'merge-pdf': 'merge',
   'split-pdf': 'split',
-  'unlock': 'unlock',
+  // 'unlock': 'unlock', // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   'watermark': 'watermark',
   'pagenumber': 'pagenumber',
   'pdf-ocr': 'pdfocr',
@@ -48,7 +48,7 @@ const EXPECTED_EXTENSIONS: Record<OperationName, string[]> = {
   'office-to-pdf': ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'],
   'merge-pdf': ['.pdf'],
   'split-pdf': ['.pdf'],
-  'unlock': ['.pdf'],
+  // 'unlock': ['.pdf'], // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   'watermark': ['.pdf'],
   'pagenumber': ['.pdf'],
   'pdf-ocr': ['.pdf'],
@@ -61,9 +61,10 @@ describe('OPERATIONS registry integrity (OPS-1, OPS-2)', () => {
     expect(OPERATION_NAMES).toEqual(Object.keys(OPERATIONS));
   });
 
-  it('contains exactly 10 operations', () => {
-    expect(OPERATION_NAMES).toHaveLength(10);
-    expect(Object.keys(OPERATIONS)).toHaveLength(10);
+  it('contains exactly 9 operations', () => {
+    // unlock temporarily disabled (10 → 9). Re-enable to restore the 10th op.
+    expect(OPERATION_NAMES).toHaveLength(9);
+    expect(Object.keys(OPERATIONS)).toHaveLength(9);
   });
 
   it('contains exactly the expected op names', () => {
@@ -85,7 +86,7 @@ describe('OPERATIONS registry integrity (OPS-1, OPS-2)', () => {
 });
 
 describe('apiToolFor mapping (OPS-2)', () => {
-  it('maps each of the 10 ops to its exact iLovePDF slug', () => {
+  it('maps each of the 9 ops to its exact iLovePDF slug', () => {
     for (const name of ALL_OPS) {
       expect(apiToolFor(name)).toBe(EXPECTED_API_TOOL[name]);
     }
@@ -120,10 +121,12 @@ describe('orchestration flags (OPS-5, OPS-6)', () => {
     }
   });
 
-  it('mustBeDirect is true ONLY for unlock', () => {
+  it('mustBeDirect is false for every enabled op (unlock disabled)', () => {
+    // unlock (the only mustBeDirect op) is TEMPORARILY DISABLED. When re-enabled,
+    // restore: expect(...).toBe(name === 'unlock').
     for (const name of ALL_OPS) {
       expect(OPERATIONS[name].mustBeDirect, `mustBeDirect for "${name}"`).toBe(
-        name === 'unlock'
+        false
       );
     }
   });
@@ -169,13 +172,14 @@ describe('cardinality fields — minSources / maxSources (TOOL-4 decoupled)', ()
     expect(OPERATIONS['image-to-pdf'].maxSources).toBeUndefined();
   });
 
-  it('all 8 single-file ops have both minSources and maxSources undefined (default exactly 1)', () => {
+  it('all 7 single-file ops have both minSources and maxSources undefined (default exactly 1)', () => {
+    // unlock temporarily disabled (8 → 7 single-file ops).
     const singleFileOps = [
       'compress-pdf',
       'pdf-to-jpg',
       'office-to-pdf',
       'split-pdf',
-      'unlock',
+      // 'unlock', // TEMPORARILY DISABLED — re-enable to publish.
       'watermark',
       'pagenumber',
       'pdf-ocr',
@@ -268,12 +272,13 @@ describe('single-source-of-truth source scan (OPS-1)', () => {
 
   it('the registry file declares no secondary hardcoded slug map', () => {
     // Within operations.ts, the ONLY place a slug appears as a value must be
-    // each op's own `apiTool:` field — exactly 10 such assignments, no more.
+    // each op's own `apiTool:` field — exactly 9 such assignments, no more
+    // (unlock temporarily disabled; would be 10 when re-enabled).
     const src = stripComments(
       readFileSync(join(process.cwd(), 'src', 'domain', 'operations.ts'), 'utf8')
     );
     const apiToolAssignments = src.match(/apiTool:\s*['"][a-z]+['"]/g) ?? [];
-    expect(apiToolAssignments).toHaveLength(10);
+    expect(apiToolAssignments).toHaveLength(9);
     expect(src).not.toMatch(/TOOL_TO_API_MAP/);
     expect(src).not.toMatch(/ilovepdf['"]?\s*:/);
   });

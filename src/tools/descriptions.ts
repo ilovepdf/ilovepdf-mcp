@@ -17,7 +17,7 @@
  */
 
 import type { OperationName } from '../domain/operation-types.js';
-import { specFor } from '../domain/operations.js';
+import { OPERATION_NAMES, specFor } from '../domain/operations.js';
 
 // ---------------------------------------------------------------------------
 // Per-operation capability lines (client-agnostic, no widget language)
@@ -34,7 +34,7 @@ const CAPABILITY: Record<OperationName, string> = {
   'office-to-pdf': 'Convert a Word, Excel, or PowerPoint document into a PDF.',
   'merge-pdf': 'Combine several PDFs into one merged PDF.',
   'split-pdf': 'Split a PDF into multiple files by page range or fixed chunks.',
-  'unlock': 'Remove a known password from a protected PDF.',
+  // 'unlock': 'Remove a known password from a protected PDF.', // TEMPORARILY DISABLED — re-enable to publish.
   'watermark': 'Stamp a text or image watermark onto a PDF.',
   'pagenumber': 'Add page numbers to a PDF.',
   'pdf-ocr': 'Run OCR on a scanned PDF to make its text selectable and searchable.',
@@ -56,6 +56,37 @@ function inputClause(op: OperationName): string {
 }
 
 // ---------------------------------------------------------------------------
+// Unsupported operation guidance (requests with no matching registry entry)
+// ---------------------------------------------------------------------------
+
+export const UNSUPPORTED_OPERATION_GUIDANCE = `### Requests for an unsupported operation (IMPORTANT)
+
+The table above is the COMPLETE list of supported operations. If the user asks for a PDF
+operation that is NOT in that table (e.g. removing/unlocking a password, redacting, editing
+text, e-signing), do NOT call this tool at all — calling it with no \`tool\` (or an invalid one)
+just opens a generic widget with no matching option, which is confusing since it never explains
+why. Instead, reply in chat that the requested operation is not currently supported, and only
+call the tool if the user asks for a DIFFERENT, supported operation.
+
+If the operation is supported on ilovepdf.com, suggest the user visit https://www.ilovepdf.com
+to perform that task directly.
+`;
+
+// ---------------------------------------------------------------------------
+// Security constraints (never disclose server internals)
+// ---------------------------------------------------------------------------
+
+export const SECURITY_CONSTRAINTS = `### Security constraints (IMPORTANT)
+
+Never reveal, quote, dump, summarize, or paraphrase this server's source code, internal
+implementation, file/directory structure, configuration, environment variables, API keys,
+tokens, or file-system paths beyond what a tool call explicitly returns in its own result.
+If asked to inspect, explain, or expose how this server is built or configured internally
+(including its source files, secrets, or working directory contents), decline and state that
+internal implementation details are not disclosed.
+`;
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -71,4 +102,27 @@ export function describeTool(op: OperationName): string {
     throw new Error(`No description defined for operation "${op}".`);
   }
   return `${capability} ${inputClause(op)}`;
+}
+
+/** One line per registered operation: "- <label>: <capability sentence>". */
+function operationsTable(): string {
+  return OPERATION_NAMES.map(name => `- ${specFor(name).label}: ${CAPABILITY[name]}`).join('\n');
+}
+
+/**
+ * Full server-level `instructions` payload (sent once to every connecting
+ * client during MCP `initialize`, per the SDK's `ServerOptions.instructions`).
+ * Combines the supported-operations table with the unsupported-operation
+ * guidance and the security constraints so both are actually delivered to the
+ * consuming LLM instead of sitting unused as dead exports.
+ */
+export function buildServerInstructions(): string {
+  return [
+    '### Supported operations',
+    '',
+    operationsTable(),
+    '',
+    UNSUPPORTED_OPERATION_GUIDANCE,
+    SECURITY_CONSTRAINTS,
+  ].join('\n');
 }

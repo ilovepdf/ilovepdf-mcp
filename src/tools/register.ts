@@ -10,7 +10,7 @@
  * removing an entry in `OPERATION_NAMES` automatically adds or removes a tool
  * with NO changes to this file (TOOL-1 / DEC-1).
  *
- * Tool naming   — `tools/tool-name.ts` (DEC-1 single source: `ilovepdf_<snake>`)
+ * Tool naming   — `tools/tool-name.ts` (DEC-1 single source: `iLovePDF_<snake>`)
  * Input shape   — `tools/input-shape.ts` (§3.2: sources, output_path, options)
  * Output shape  — `contract/result-schema.ts` (LOCKED shared RESULT_OUTPUT_SHAPE)
  * Description   — `tools/descriptions.ts` (SHORT, client-agnostic)

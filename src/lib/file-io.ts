@@ -330,18 +330,44 @@ function stemOf(source: string): string {
  * Choose the output filename. Prefer iLovePDF's `download_filename`; otherwise
  * build `<firstSourceStem>-<apiTool>.<ext>` where multi-file operations (split,
  * pdf-to-jpg) yield a `.zip`. Result is always a sanitized basename.
+ *
+ * DATA SAFETY — collision avoidance:
+ * If the upstream filename (after sanitization) matches the basename of any
+ * source file, the fallback pattern is used instead. This prevents the default
+ * output from silently overwriting the input when iLovePDF returns a filename
+ * identical to the source (e.g. compress-pdf returning "document.pdf" for
+ * input "document.pdf"). The comparison is case-insensitive on Windows/macOS.
  */
 export function deriveOutputFilename(
   op: OperationSpec,
   sources: string[],
   upstreamFilename: string
 ): string {
-  if (upstreamFilename && upstreamFilename.trim().length > 0) {
-    return sanitizeBasename(upstreamFilename);
-  }
   const stem = stemOf(sources[0] ?? 'output');
   // Derive extension from the registry SSOT flag (producesArchive) rather than
   // a hardcoded slug set, so this module carries no knowledge of apiTool values.
   const ext = op.producesArchive ? 'zip' : 'pdf';
-  return sanitizeBasename(`${stem}-${op.apiTool}.${ext}`);
+  const fallback = sanitizeBasename(`${stem}-${op.apiTool}.${ext}`);
+
+  if (!upstreamFilename || upstreamFilename.trim().length === 0) {
+    return fallback;
+  }
+
+  const sanitized = sanitizeBasename(upstreamFilename);
+
+  // Collision check: if the upstream name matches any source basename, use the
+  // fallback so the output never shadows the input by default.
+  //
+  // Always compare case-insensitively regardless of platform. This is a
+  // data-safety guard — it must be conservative on every OS so the output
+  // never silently overwrites an input that differs only by case (e.g. the
+  // upstream returns "doc.pdf" for input "Doc.pdf" on a case-sensitive Linux
+  // filesystem). The allowlist containment logic (resolveWithin) remains
+  // platform-matched; only this collision check is unconditionally lowercase.
+  const sourceBasenames = sources.map(s =>
+    path.basename(s.replace(/\\/g, '/')).toLowerCase()
+  );
+  const normalizedSanitized = sanitized.toLowerCase();
+
+  return sourceBasenames.includes(normalizedSanitized) ? fallback : sanitized;
 }

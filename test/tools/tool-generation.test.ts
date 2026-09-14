@@ -24,7 +24,7 @@ const { STUB_OP_NAME, STUB_TOOL_NAME } = vi.hoisted(() => {
   const name = 'stub-test-op';
   return {
     STUB_OP_NAME: name,
-    STUB_TOOL_NAME: `ilovepdf_${name.replace(/-/g, '_')}`,
+    STUB_TOOL_NAME: `iLovePDF_${name.replace(/-/g, '_')}`,
   };
 });
 
@@ -119,7 +119,7 @@ type RawTool = {
 
 /** Read the private _registeredTools map from a McpServer instance. */
 function getTools(server: McpServer): Record<string, RawTool> {
-  return (server as Record<string, unknown>)['_registeredTools'] as Record<
+  return (server as unknown as Record<string, unknown>)['_registeredTools'] as Record<
     string,
     RawTool
   >;
@@ -145,19 +145,20 @@ describe('registerAllTools — count (TOOL-1)', () => {
     expect(Object.keys(tools)).toHaveLength(OPERATION_NAMES.length);
   });
 
-  it('mocked OPERATION_NAMES includes the stub (11 total)', () => {
-    // Confirm the mock injected the 11th entry — prerequisite for the next test.
+  it('mocked OPERATION_NAMES includes the stub (10 total)', () => {
+    // Confirm the mock injected the extra entry — prerequisite for the next test.
+    // (9 real ops + 1 stub = 10; unlock temporarily disabled.)
     expect(OPERATION_NAMES).toContain(STUB_OP_NAME);
-    expect(OPERATION_NAMES).toHaveLength(11);
+    expect(OPERATION_NAMES).toHaveLength(10);
   });
 
-  it('stubbed 11th entry yields an 11th tool with no register.ts change (TOOL-1)', () => {
-    // OPERATION_NAMES is mocked to 11 entries. registerAllTools must produce
-    // 11 tools purely by iteration — no hardcoded counts in register.ts.
+  it('stubbed extra entry yields an extra tool with no register.ts change (TOOL-1)', () => {
+    // OPERATION_NAMES is mocked to 10 entries. registerAllTools must produce
+    // 10 tools purely by iteration — no hardcoded counts in register.ts.
     const server = makeServer();
     registerAllTools(server);
     const tools = getTools(server);
-    expect(Object.keys(tools)).toHaveLength(11);
+    expect(Object.keys(tools)).toHaveLength(10);
     expect(Object.keys(tools)).toContain(STUB_TOOL_NAME);
   });
 
@@ -195,28 +196,28 @@ describe('registerAllTools — tool names (TOOL-2 / DEC-1)', () => {
     }
   });
 
-  it('tool names for the 10 real ops match the exact DEC-1 set', () => {
+  it('tool names for the 9 real ops match the exact DEC-1 set', () => {
     const EXPECTED = [
-      'ilovepdf_compress_pdf',
-      'ilovepdf_pdf_to_jpg',
-      'ilovepdf_image_to_pdf',
-      'ilovepdf_office_to_pdf',
-      'ilovepdf_merge_pdf',
-      'ilovepdf_split_pdf',
-      'ilovepdf_unlock',
-      'ilovepdf_watermark',
-      'ilovepdf_pagenumber',
-      'ilovepdf_pdf_ocr',
+      'iLovePDF_compress_pdf',
+      'iLovePDF_pdf_to_jpg',
+      'iLovePDF_image_to_pdf',
+      'iLovePDF_office_to_pdf',
+      'iLovePDF_merge_pdf',
+      'iLovePDF_split_pdf',
+      // 'iLovePDF_unlock', // TEMPORARILY DISABLED — re-enable to publish.
+      'iLovePDF_watermark',
+      'iLovePDF_pagenumber',
+      'iLovePDF_pdf_ocr',
     ];
     for (const name of EXPECTED) {
       expect(Object.keys(tools)).toContain(name);
     }
   });
 
-  it('all tool names match ^ilovepdf_[a-z_]+$', () => {
+  it('all tool names match ^iLovePDF_[a-z_]+$', () => {
     for (const name of Object.keys(tools)) {
       expect(name, `tool name "${name}" must match pattern`).toMatch(
-        /^ilovepdf_[a-z_]+$/
+        /^iLovePDF_[a-z_]+$/
       );
     }
   });

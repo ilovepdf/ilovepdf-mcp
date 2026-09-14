@@ -225,12 +225,14 @@ export async function processILovePDFTask(
             if (fileErrors.length > 0) {
               const errorType = fileErrors[0];
               if (errorType === 'WrongPassword') {
-                if (tool === 'unlock') {
-                  detailedMessage = 'Incorrect password. Please try again.';
-                } else {
-                  detailedMessage =
-                    'The file could not be processed. It may be password-protected, encrypted, or corrupted. Please check the file and try again.';
-                }
+                // TEMPORARILY DISABLED — unlock tool commented out; re-enable to
+                // publish and restore the op-aware "Incorrect password" branch.
+                // if (tool === 'unlock') {
+                //   detailedMessage = 'Incorrect password. Please try again.';
+                // } else {
+                detailedMessage =
+                  'The file could not be processed. It may be password-protected, encrypted, or corrupted. Please check the file and try again.';
+                // }
               } else if (errorType.toLowerCase().includes('password')) {
                 detailedMessage = `Password error: ${errorType}`;
               } else {

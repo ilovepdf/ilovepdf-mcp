@@ -19,6 +19,9 @@ import {
   validateOptions,
   compressOptionsSchema,
   pdfToJpgOptionsSchema,
+  pdfOcrOptionsSchema,
+  unlockOptionsSchema,
+  officeToPdfOptionsSchema,
 } from '../../src/contract/options-schema.js';
 import { ToolError, isToolError } from '../../src/domain/errors.js';
 import type { OperationName } from '../../src/domain/operation-types.js';
@@ -30,7 +33,7 @@ const ALL_OPS: OperationName[] = [
   'office-to-pdf',
   'merge-pdf',
   'split-pdf',
-  'unlock',
+  // 'unlock', // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   'watermark',
   'pagenumber',
   'pdf-ocr',
@@ -52,7 +55,7 @@ describe('OPTIONS_SCHEMAS', () => {
       'office-to-pdf': {},
       'merge-pdf': {},
       'split-pdf': { split_mode: 'ranges', ranges: '1-3,4-6' },
-      'unlock': { password: 'secret' },
+      // 'unlock': { password: 'secret' }, // TEMPORARILY DISABLED — re-enable to publish.
       'watermark': { mode: 'text', text: 'DRAFT', transparency: 50 },
       'pagenumber': { pages: 'all', starting_number: 1 },
       'pdf-ocr': { ocr_languages: ['eng', 'spa'] },
@@ -108,6 +111,77 @@ describe('pdf-to-jpg schema', () => {
   });
 });
 
+describe('pdf-ocr schema', () => {
+  it('accepts a single language', () => {
+    expect(pdfOcrOptionsSchema.safeParse({ ocr_languages: ['eng'] }).success).toBe(true);
+  });
+
+  it('accepts multiple languages', () => {
+    expect(
+      pdfOcrOptionsSchema.safeParse({ ocr_languages: ['eng', 'spa', 'fra'] }).success
+    ).toBe(true);
+  });
+
+  it('accepts non-standard codes without enum rejection (forward-compat)', () => {
+    // iLovePDF adds codes over time; individual values are not enum-validated by design
+    expect(pdfOcrOptionsSchema.safeParse({ ocr_languages: ['aze_cyrl'] }).success).toBe(true);
+  });
+
+  it('accepts empty options (default ["eng"] is applied downstream)', () => {
+    expect(pdfOcrOptionsSchema.safeParse({}).success).toBe(true);
+  });
+
+  it('rejects ocr_languages as a bare string (must be an array)', () => {
+    expect(pdfOcrOptionsSchema.safeParse({ ocr_languages: 'eng' }).success).toBe(false);
+  });
+
+  it('rejects a non-string element in the languages array', () => {
+    expect(pdfOcrOptionsSchema.safeParse({ ocr_languages: [123] }).success).toBe(false);
+  });
+
+  it('passes unknown keys through (.passthrough())', () => {
+    const result = pdfOcrOptionsSchema.safeParse({ ocr_languages: ['eng'], future_param: true });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('unlock schema', () => {
+  it('accepts a string password', () => {
+    expect(unlockOptionsSchema.safeParse({ password: 'secret' }).success).toBe(true);
+  });
+
+  it('accepts empty options (password-free unlock)', () => {
+    expect(unlockOptionsSchema.safeParse({}).success).toBe(true);
+  });
+
+  it('rejects a numeric password', () => {
+    expect(unlockOptionsSchema.safeParse({ password: 123 }).success).toBe(false);
+  });
+
+  it('rejects a boolean password', () => {
+    expect(unlockOptionsSchema.safeParse({ password: true }).success).toBe(false);
+  });
+
+  it('passes unknown keys through (.passthrough())', () => {
+    const result = unlockOptionsSchema.safeParse({ password: 'pw', future_param: 'x' });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('office-to-pdf schema', () => {
+  it('accepts empty options (API has no extra process parameters)', () => {
+    expect(officeToPdfOptionsSchema.safeParse({}).success).toBe(true);
+  });
+
+  it('passes any key through (no typed fields to reject)', () => {
+    const result = officeToPdfOptionsSchema.safeParse({ future_param: 'value', another: 42 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect((result.data as Record<string, unknown>).future_param).toBe('value');
+    }
+  });
+});
+
 describe('VALID_FONT_FAMILIES', () => {
   it('contains the exact iLovePDF font list', () => {
     expect(VALID_FONT_FAMILIES).toContain('Arial');
@@ -138,6 +212,46 @@ describe('validateOptions', () => {
     }
     expect(isToolError(caught)).toBe(true);
     expect((caught as ToolError).code).toBe('VALIDATION_ERROR');
+  });
+
+  it('throws ToolError(VALIDATION_ERROR) for pdf-ocr with ocr_languages as a string', () => {
+    let caught: unknown;
+    try {
+      validateOptions('pdf-ocr', { ocr_languages: 'eng' });
+    } catch (err) {
+      caught = err;
+    }
+    expect(isToolError(caught)).toBe(true);
+    expect((caught as ToolError).code).toBe('VALIDATION_ERROR');
+  });
+
+  it('throws ToolError(VALIDATION_ERROR) for pdf-ocr with a non-string in ocr_languages', () => {
+    let caught: unknown;
+    try {
+      validateOptions('pdf-ocr', { ocr_languages: [123] });
+    } catch (err) {
+      caught = err;
+    }
+    expect(isToolError(caught)).toBe(true);
+    expect((caught as ToolError).code).toBe('VALIDATION_ERROR');
+  });
+
+  // 'unlock' TEMPORARILY DISABLED — no schema is registered for it, so
+  // validateOptions no-ops instead of throwing; re-enable alongside the
+  // registry entry to re-publish.
+  it.skip('throws ToolError(VALIDATION_ERROR) for unlock with a numeric password', () => {
+    let caught: unknown;
+    try {
+      validateOptions('unlock', { password: 123 });
+    } catch (err) {
+      caught = err;
+    }
+    expect(isToolError(caught)).toBe(true);
+    expect((caught as ToolError).code).toBe('VALIDATION_ERROR');
+  });
+
+  it('does not throw for office-to-pdf with empty options', () => {
+    expect(() => validateOptions('office-to-pdf', {})).not.toThrow();
   });
 });
 

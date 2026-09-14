@@ -45,7 +45,7 @@ import { ToolError, isToolError } from '../domain/errors.js';
 import type { ErrorCode } from '../domain/errors.js';
 import type { OperationSpec } from '../domain/operation-types.js';
 import { requireEnv } from '../lib/env.js';
-import { validateOptions } from '../contract/options-schema.js';
+import { validateOptions, applyPdfjpgQuality } from '../contract/options-schema.js';
 import {
   isUrl,
   loadAllowlist,
@@ -102,10 +102,10 @@ interface FailureStructuredContent {
 export type HandlerResult =
   | (ToolCallResult & { isError?: false })
   | {
-      isError: true;
-      content: Array<{ type: 'text'; text: string }>;
-      structuredContent: FailureStructuredContent;
-    };
+    isError: true;
+    content: Array<{ type: 'text'; text: string }>;
+    structuredContent: FailureStructuredContent;
+  };
 
 // ---------------------------------------------------------------------------
 // Internal: a resolved source pairs an upload input with validation metadata.
@@ -118,6 +118,11 @@ interface ResolvedInput {
   filename: string;
   /** Byte size for size validation + inputBytes; 0 for URL sources. */
   size: number;
+  /**
+   * Canonical absolute path for local (non-URL) sources — used for the
+   * overwrite-protection guard passed to buildResult. Absent for URL sources.
+   */
+  absPath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,6 +224,7 @@ async function resolveSources(
         } as UploadFileInput,
         filename: local.filename,
         size: local.size,
+        absPath: local.absPath,
       };
     })
   );
@@ -251,11 +257,11 @@ function toErrorResult(
   const toolErr = isToolError(err)
     ? err
     : new ToolError(
-        'INTERNAL',
-        err instanceof Error ? err.message : String(err),
-        'An unexpected error occurred. Please try again.',
-        false
-      );
+      'INTERNAL',
+      err instanceof Error ? err.message : String(err),
+      'An unexpected error occurred. Please try again.',
+      false
+    );
 
   // DEC-5: audit the FULL toStructured() (incl. detail) to stderr only.
   log.error(`[handler] ${op.name} failed`, toolErr.toStructured());
@@ -317,14 +323,172 @@ export function makeHandler(op: OperationSpec) {
       const merged = { ...op.defaultOptions, ...(args.options ?? {}) };
       const { options: normalized, warnings } = normalizeOptions(op.name, merged);
 
+      // pdf-to-jpg: normalize quality/pdfjpg_mode, then map quality → dpi.
+      // Runs in handler (not normalizer) because pdf-to-jpg is in NO_OP_TOOLS.
+      if (op.name === 'pdf-to-jpg') {
+        if (normalized.quality !== undefined) {
+          const q = String(normalized.quality).trim().toLowerCase();
+          if (q === 'normal') {
+            normalized.quality = 'Normal';
+          } else if (['high', 'alta', 'alto'].includes(q)) {
+            normalized.quality = 'High';
+          } else if (normalized.quality !== 'Normal' && normalized.quality !== 'High') {
+            warnings.push(`pdf-to-jpg quality '${normalized.quality}' is not valid. Ignoring.`);
+            delete normalized.quality;
+          }
+        }
+        if (normalized.pdfjpg_mode !== undefined) {
+          const m = String(normalized.pdfjpg_mode).trim().toLowerCase();
+          if (['page', 'pagina', 'paginas'].includes(m)) {
+            normalized.pdfjpg_mode = 'pages';
+          } else if (m === 'pages') {
+            normalized.pdfjpg_mode = 'pages';
+          } else if (['extract', 'extraer', 'extracted', 'extrae'].includes(m)) {
+            normalized.pdfjpg_mode = 'extract';
+          } else if (normalized.pdfjpg_mode !== 'pages' && normalized.pdfjpg_mode !== 'extract') {
+            warnings.push(`pdf-to-jpg pdfjpg_mode '${normalized.pdfjpg_mode}' is not valid. Using 'pages'.`);
+            normalized.pdfjpg_mode = 'pages';
+          }
+        }
+        applyPdfjpgQuality(normalized);
+      }
+
+      // compress-pdf: normalize compression_level synonyms.
+      // Runs in handler (not normalizer) because compress-pdf is in NO_OP_TOOLS.
+      if (op.name === 'compress-pdf' && normalized.compression_level !== undefined) {
+        const cl = String(normalized.compression_level).trim().toLowerCase();
+        if (['recommended', 'recomendado', 'normal', 'default'].includes(cl)) {
+          normalized.compression_level = 'recommended';
+        } else if (['extreme', 'extremo', 'high', 'alta', 'alto', 'maximum', 'max', 'highest', 'maximum'].includes(cl)) {
+          normalized.compression_level = 'extreme';
+        } else if (['low', 'bajo', 'baja', 'light', 'minimal', 'minimum', 'min', 'none', 'ninguno', 'ninguna'].includes(cl)) {
+          normalized.compression_level = 'low';
+        } else if (!['recommended', 'extreme', 'low'].includes(String(normalized.compression_level))) {
+          warnings.push(`compress-pdf compression_level '${normalized.compression_level}' is not valid. Using 'recommended'.`);
+          normalized.compression_level = 'recommended';
+        }
+      }
+
+      // pdf-ocr: normalize language names → ISO codes, filter invalid entries.
+      // Runs in handler (not normalizer) because pdf-ocr is in NO_OP_TOOLS.
+      if (op.name === 'pdf-ocr' && normalized.ocr_languages !== undefined) {
+        const raw = normalized.ocr_languages as unknown[];
+        const LANG_MAP: Record<string, string> = {
+          english: 'eng', inglés: 'eng', ingles: 'eng',
+          spanish: 'spa', español: 'spa', espanol: 'spa',
+          french: 'fra', francés: 'fra', frances: 'fra',
+          german: 'deu', deutsch: 'deu', alemán: 'deu', aleman: 'deu',
+          portuguese: 'por', portugués: 'por', portugues: 'por',
+          italian: 'ita', italiano: 'ita',
+          japanese: 'jpn', japonés: 'jpn', japones: 'jpn',
+          korean: 'kor', coreano: 'kor',
+          arabic: 'ara', árabe: 'ara', arabe: 'ara',
+          russian: 'rus', ruso: 'rus',
+          'chinese simplified': 'chi_sim', 'chino simplificado': 'chi_sim',
+          'chinese traditional': 'chi_tra', 'chino tradicional': 'chi_tra',
+        };
+        const VALID_OCR_CODES = new Set([
+          'eng', 'afr', 'amh', 'ara', 'asm', 'aze', 'bel', 'ben', 'bod', 'bos', 'bul', 'cat', 'ces',
+          'chi_sim', 'chi_tra', 'dan', 'deu', 'ell', 'epo', 'est', 'eus', 'fas', 'fil', 'fin', 'fra',
+          'gla', 'gle', 'glg', 'guj', 'heb', 'hin', 'hrv', 'hun', 'hye', 'ind', 'isl', 'ita', 'jpn',
+          'kan', 'kat', 'kaz', 'khm', 'kor', 'lao', 'lat', 'lav', 'lit', 'mal', 'mar', 'mkd', 'mlt',
+          'mon', 'msa', 'mya', 'nep', 'nld', 'nor', 'pan', 'pol', 'por', 'ron', 'rus', 'sin', 'slk',
+          'slv', 'spa', 'sqi', 'srp', 'swa', 'swe', 'tam', 'tel', 'tgl', 'tha', 'tur', 'ukr', 'urd',
+          'vie', 'yid',
+        ]);
+        const langs: string[] = [];
+        for (const lang of raw) {
+          const s = String(lang).trim().toLowerCase();
+          if (VALID_OCR_CODES.has(s)) {
+            langs.push(s);
+          } else if (LANG_MAP[s]) {
+            warnings.push(`pdf-ocr: '${lang}' was interpreted as language code '${LANG_MAP[s]}'.`);
+            langs.push(LANG_MAP[s]);
+          } else {
+            warnings.push(`pdf-ocr: '${lang}' is not a valid OCR language code and was removed.`);
+          }
+        }
+        if (langs.length === 0) {
+          warnings.push(`pdf-ocr: no valid language codes remain; defaulting to ['eng'].`);
+          normalized.ocr_languages = ['eng'];
+        } else {
+          normalized.ocr_languages = langs;
+        }
+      }
+
+      // unlock: password is required. Without it, iLovePDF returns a cryptic error.
+      // Surface a clear message so the LLM can ask the user for the password.
+      // TEMPORARILY DISABLED — unlock tool commented out; re-enable alongside
+      // the 'unlock' OperationName / OPERATIONS entry to re-publish.
+      // if (op.name === 'unlock' && !normalized.password) {
+      //   throw new ToolError(
+      //     'VALIDATION_ERROR',
+      //     'unlock requires a password but none was provided.',
+      //     'Please provide the PDF password via the "password" option.',
+      //     false
+      //   );
+      // }
+
+      // watermark image mode: validate image_source is present, resolve it
+      // separately (bypassing the .pdf extension check), and upload it alongside
+      // the PDF into a shared task. iLovePDF identifies the watermark image via
+      // the `image` field in the process body (its server_filename).
+      if (op.name === 'watermark' && normalized.mode === 'image' && !normalized.image_source) {
+        throw new ToolError(
+          'VALIDATION_ERROR',
+          'Invalid options for "watermark": "image_source" is required when mode is "image".',
+          'Please provide the watermark image path or URL via the "image_source" option.',
+          false
+        );
+      }
+
       const uploads = inputs.map(input => input.upload);
-      const creds = op.requiresSharedTask
+
+      if (op.name === 'watermark' && normalized.mode === 'image' && normalized.image_source) {
+        const imgSrc = normalized.image_source as string;
+        const imageExts = ['.png', '.jpg', '.jpeg'];
+        const imgOp = { ...op, acceptedExtensions: imageExts };
+        const imgResolved = await resolveSources([imgSrc], imgOp, allow);
+        validateExtension(imgResolved[0].filename, imageExts);
+        if (imgResolved[0].size > 0) validateSize(imgResolved[0].size, MAX_INPUT_FILE_MB);
+        uploads.push(imgResolved[0].upload);
+        delete normalized.image_source;
+      }
+
+      const useSharedTask =
+        op.requiresSharedTask || (op.name === 'watermark' && normalized.mode === 'image');
+      const creds = useSharedTask
         ? await uploadIntoSharedTask(op, uploads, env)
         : await uploadFiles(op, uploads, env);
+
+      // unlock: password must live inside each file entry, not as a top-level
+      // process param. The iLovePDF API reads it from ILovePDFFile.password.
+      // TEMPORARILY DISABLED — unlock tool commented out; re-enable alongside
+      // the 'unlock' OperationName / OPERATIONS entry to re-publish.
+      // if (op.name === 'unlock' && normalized.password) {
+      //   const pw = normalized.password as string;
+      //   creds.files = creds.files.map(f => ({ ...f, password: pw }));
+      //   delete normalized.password;
+      // }
+
+      // watermark image mode: inject the uploaded image's server_filename into
+      // the process options so iLovePDF knows which file is the watermark image.
+      if (op.name === 'watermark' && normalized.mode === 'image') {
+        const imageFile = creds.files[creds.files.length - 1];
+        if (imageFile) normalized.image = imageFile.server_filename;
+      }
 
       const exec = await execute(op, creds, normalized);
 
       const inputBytes = inputs.reduce((sum, input) => sum + input.size, 0);
+
+      // Collect canonical absolute paths of local input sources for the
+      // overwrite-protection guard inside buildResult. URL sources have no
+      // local path and are excluded from this list.
+      const resolvedLocalPaths = inputs
+        .map(i => i.absPath)
+        .filter((p): p is string => p !== undefined);
+
       const result = await buildResult({
         op,
         exec,
@@ -333,13 +497,18 @@ export function makeHandler(op: OperationSpec) {
         output_path: args.output_path,
         allow,
         startedAt,
+        resolvedLocalPaths,
       });
 
-      // DEC-2: surface normalization warnings inside the SINGLE content block
-      // (TOOL-7 mandates exactly one content item).
-      if (warnings.length > 0 && result.content[0]) {
-        const note = `\n\nNotes:\n${warnings.map(w => `- ${w}`).join('\n')}`;
-        result.content[0].text += note;
+      // DEC-2: surface normalization warnings inside the first content block
+      // (the text summary block, always at index 0). Type-narrow before mutating
+      // since content blocks are a discriminated union.
+      if (warnings.length > 0) {
+        const firstBlock = result.content[0];
+        if (firstBlock && firstBlock.type === 'text') {
+          const note = `\n\nNotes:\n${warnings.map(w => `- ${w}`).join('\n')}`;
+          firstBlock.text += note;
+        }
       }
 
       return result;

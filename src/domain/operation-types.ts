@@ -32,7 +32,7 @@ export type OperationName =
   | 'office-to-pdf'
   | 'merge-pdf'
   | 'split-pdf'
-  | 'unlock'
+  // | 'unlock' // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   | 'watermark'
   | 'pagenumber'
   | 'pdf-ocr';
@@ -44,7 +44,7 @@ export type ApiTool =
   | 'officepdf'
   | 'merge'
   | 'split'
-  | 'unlock'
+  // | 'unlock' // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish.
   | 'watermark'
   | 'pagenumber'
   | 'pdfocr';

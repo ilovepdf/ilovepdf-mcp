@@ -71,6 +71,14 @@ flowchart TD
 
 **Denial messages** name only the allowed root, never the attempted path, to prevent filesystem structure disclosure.
 
+### 2.4 Never-overwrite guarantee (data-safety)
+
+Two mechanisms ensure a tool call can never silently overwrite an input file with its output:
+
+1. **Filename derivation collision-avoidance:** `deriveOutputFilename` compares the upstream filename returned by iLovePDF against the basename of every source file. If they match (case-insensitive on Windows/macOS), the `<stem>-<apiTool>.<ext>` fallback is used instead so the default output name always differs from the input.
+
+2. **Overwrite guard in `buildResult`:** after resolving the final output path but **before writing any bytes**, the canonical output path is compared against the canonical absolute paths of every local input source. If they are equivalent (case-insensitive on Windows/macOS), a `VALIDATION_ERROR` is thrown and no write occurs. This guard fires for both default-derived paths and explicit `output_path` values.
+
 ### 2.3 URL sources vs. local paths
 
 - **URL sources** (`http(s)://…`) bypass the path allowlist entirely — they are uploaded to iLovePDF directly, not read from disk. Path traversal does not apply.
@@ -141,6 +149,33 @@ raw:      https://api7.ilovepdf.com/v1/download/abc123?token=eyJ…
 returned: https://api7.ilovepdf.com/v1/download/abc123
 ```
 
+### 4.5 Opt-in tokenized download URL — `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL`
+
+By default (flag unset or `false`), DEC-4 applies and the token is always stripped.
+
+When `ILOVEPDF_MCP_RETURN_DOWNLOAD_URL=true`, the raw tokenized URL is returned in `structuredContent.output.download_url` so the MCP client can download the file directly without a local filesystem read.
+
+**Security trade-off:**
+- The task-scoped token is time-limited but grants anyone who holds it temporary download access to the produced file from any network location.
+- Enable only when the MCP client is a server-side agent that immediately fetches and discards the URL, and you trust the client to handle the credential safely.
+- The audit-logger redacts `?token=` in **all log lines regardless of this flag** — the flag controls only what is placed in the returned `structuredContent`, never what is written to logs.
+
+**Never enable in shared or multi-user environments.** The local `output.path` is always the authoritative result; the tokenized URL is a convenience for clients that cannot read the local file.
+
+### 4.6 Embedded resource and resource_link (`ILOVEPDF_MCP_EMBED_RESULT`)
+
+By default the `content` array returned to the MCP client contains **only the text block** (a markdown summary of the operation). This is the maximally client-compatible default: Claude Desktop — and other clients that enforce strict MIME-type rules for embedded resources — reject tool results that include a `resource` block with a non-text MIME type such as `application/pdf`, returning a "media_type not allowed" error for the entire tool response.
+
+Set `ILOVEPDF_MCP_EMBED_RESULT=true` (or `1`) to also append the two additional content blocks described below. Use this only for clients that support embedded resource blobs, such as MCP Inspector.
+
+- **`resource` block (embedded blob):** the output file bytes base64-encoded, included only when `ILOVEPDF_MCP_EMBED_RESULT=true` **and** the output size is ≤ `ILOVEPDF_MCP_MAX_INLINE_MB` (default 10 MB). Lets MCP clients that can render embedded resources present the file without a separate filesystem read.
+
+  **Size cap (`ILOVEPDF_MCP_MAX_INLINE_MB`):** keeps base64 blobs from bloating the client's context window. Set to `0` to suppress the blob while keeping the `resource_link`. The cap applies only when `ILOVEPDF_MCP_EMBED_RESULT=true`; it has no effect in the default text-only mode.
+
+- **`resource_link` block:** a `file://` URI pointing to the local output file. Present only when `ILOVEPDF_MCP_EMBED_RESULT=true`; within that mode it is always appended even when the blob is omitted due to the cap.
+
+Neither content block carries the iLovePDF credential (`?token=`) — they always point to the **local** output file via `file://` URIs.
+
 ### 4.2 DEC-5 — minimal-disclosure error surface
 
 On failure the tool returns a `ToolError` payload. The user-facing fields are strictly controlled:
@@ -170,6 +205,10 @@ Before any log line is emitted, `audit-logger.ts` applies three redaction passes
 ---
 
 ## 5. `unlock` operation — password delegation note
+
+> **NOTE:** The `unlock` operation is TEMPORARILY DISABLED — its logic is
+> preserved but commented out and it is not registered as an MCP tool. The
+> note below applies when the tool is re-enabled.
 
 The `unlock` operation does NOT validate the supplied `password` locally. The
 password value is forwarded as-is in the `/process` body to iLovePDF, which

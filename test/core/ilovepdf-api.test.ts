@@ -144,21 +144,23 @@ describe('processILovePDFTask', () => {
     ).rejects.toThrow(/PlainStringError/);
   });
 
-  it('gives an op-aware message for WrongPassword on the unlock tool', async () => {
-    mock.forceError('process', 400, {
-      error: {
-        type: 'ProcessError',
-        message: 'process error',
-        param: [{ error: 'WrongPassword' }],
-        code: 400,
-      },
-    });
-    await expect(
-      processILovePDFTask(TEST_SERVER, TEST_TASK, TEST_TOKEN, 'unlock', {
-        files: [],
-      })
-    ).rejects.toThrow(/Incorrect password/i);
-  });
+  // TEMPORARILY DISABLED — unlock tool commented out; re-enable to publish and
+  // restore this op-aware "Incorrect password" assertion for the unlock tool.
+  // it('gives an op-aware message for WrongPassword on the unlock tool', async () => {
+  //   mock.forceError('process', 400, {
+  //     error: {
+  //       type: 'ProcessError',
+  //       message: 'process error',
+  //       param: [{ error: 'WrongPassword' }],
+  //       code: 400,
+  //     },
+  //   });
+  //   await expect(
+  //     processILovePDFTask(TEST_SERVER, TEST_TASK, TEST_TOKEN, 'unlock', {
+  //       files: [],
+  //     })
+  //   ).rejects.toThrow(/Incorrect password/i);
+  // });
 
   it('gives a generic message for WrongPassword on non-unlock tools', async () => {
     mock.forceError('process', 400, {

@@ -17,6 +17,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { registerAllTools } from './tools/register.js';
+import { buildServerInstructions } from './tools/descriptions.js';
 import { createRequire } from 'node:module';
 
 // Read the package version at startup via createRequire so we stay compatible
@@ -38,7 +39,7 @@ const { version } = _require('../package.json') as { version: string };
 export function buildServer(): McpServer {
   const server = new McpServer(
     { name: '@ilovepdf/mcp', version },
-    { capabilities: { tools: {} } }
+    { capabilities: { tools: {} }, instructions: buildServerInstructions() }
   );
   registerAllTools(server);
   return server;

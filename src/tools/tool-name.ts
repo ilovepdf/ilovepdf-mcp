@@ -4,9 +4,9 @@
  * SINGLE source of the MCP tool-naming rule (TOOL-2, OPS-6, DEC-1).
  *
  * DEC-1: a tool name is derived mechanically from its operation name as
- *   `ilovepdf_` + operationName with every `-` replaced by `_`
- * (e.g. `compress-pdf` -> `ilovepdf_compress_pdf`, `merge-pdf` ->
- * `ilovepdf_merge_pdf`). An optional `op.toolName` override wins when present;
+ *   `iLovePDF_` + operationName with every `-` replaced by `_`
+ * (e.g. `compress-pdf` -> `iLovePDF_compress_pdf`, `merge-pdf` ->
+ * `iLovePDF_merge_pdf`). An optional `op.toolName` override wins when present;
  * v1 ships no overrides, but the hook keeps the rule in one place so future
  * name changes need touch nothing else.
  *
@@ -20,5 +20,5 @@ import type { OperationSpec } from '../domain/operation-types.js';
  * otherwise derives it mechanically per DEC-1.
  */
 export function toolName(op: OperationSpec): string {
-  return op.toolName ?? `ilovepdf_${op.name.replace(/-/g, '_')}`;
+  return op.toolName ?? `iLovePDF_${op.name.replace(/-/g, '_')}`;
 }

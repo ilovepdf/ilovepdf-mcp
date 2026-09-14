@@ -107,24 +107,36 @@ export const OPERATIONS = {
     description:
       'Split a PDF into multiple files by page range or fixed chunks.',
     acceptedExtensions: ['.pdf'],
-    defaultOptions: {},
+    defaultOptions: {
+      split_mode: 'ranges',
+      fixed_range: 1,
+      merge_after: false,
+    },
     requiresSharedTask: false,
     mustBeDirect: false,
     producesArchive: true,
     optionsSchema: OPTIONS_SCHEMAS['split-pdf'],
   },
 
-  'unlock': {
-    name: 'unlock',
-    apiTool: 'unlock',
-    label: 'Unlock PDF',
-    description: 'Remove a known password from a PDF.',
-    acceptedExtensions: ['.pdf'],
-    defaultOptions: {},
-    requiresSharedTask: false,
-    mustBeDirect: true,
-    optionsSchema: OPTIONS_SCHEMAS['unlock'],
-  },
+  /*
+   * TEMPORARILY DISABLED — the `unlock` tool is commented out and no longer
+   * registered/exposed. All logic is preserved; uncomment this block (and the
+   * matching entries in operation-types.ts, options-schema.ts,
+   * option-normalizer.ts, result-builder.ts, descriptions.ts, and
+   * ilovepdf-api.ts) to re-enable and publish it.
+   *
+   * 'unlock': {
+   *   name: 'unlock',
+   *   apiTool: 'unlock',
+   *   label: 'Unlock PDF',
+   *   description: 'Remove a known password from a PDF.',
+   *   acceptedExtensions: ['.pdf'],
+   *   defaultOptions: {},
+   *   requiresSharedTask: false,
+   *   mustBeDirect: true,
+   *   optionsSchema: OPTIONS_SCHEMAS['unlock'],
+   * },
+   */
 
   'watermark': {
     name: 'watermark',
@@ -132,7 +144,20 @@ export const OPERATIONS = {
     label: 'Add Watermark',
     description: 'Add a text or image watermark to a PDF.',
     acceptedExtensions: ['.pdf'],
-    defaultOptions: { mode: 'text' },
+    defaultOptions: {
+      mode: 'text',
+      pages: 'all',
+      vertical_position: 'middle',
+      horizontal_position: 'center',
+      mosaic: false,
+      rotation: 0,
+      font_family: 'Arial Unicode MS',
+      font_style: null,
+      font_size: 14,
+      font_color: '#000000',
+      transparency: 100,
+      layer: 'above',
+    },
     requiresSharedTask: false,
     mustBeDirect: false,
     optionsSchema: OPTIONS_SCHEMAS['watermark'],
@@ -144,7 +169,18 @@ export const OPERATIONS = {
     label: 'Add Page Numbers',
     description: 'Add page numbers to a PDF.',
     acceptedExtensions: ['.pdf'],
-    defaultOptions: {},
+    defaultOptions: {
+      pages: 'all',
+      starting_number: 1,
+      text: '{n}',
+      first_cover: false,
+      vertical_position: 'bottom',
+      horizontal_position: 'center',
+      font_family: 'Arial Unicode MS',
+      font_size: 14,
+      font_color: '#000000',
+      facing_pages: false,
+    },
     requiresSharedTask: false,
     mustBeDirect: false,
     optionsSchema: OPTIONS_SCHEMAS['pagenumber'],

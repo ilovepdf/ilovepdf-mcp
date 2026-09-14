@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iLovePDF MCP — Test Suite</title>
+<style>
+:root {
+  --bg: #F1F5FB; --surface: #FFFFFF; --surface-2: #F4F7FC;
+  --border: #DDE5F4; --text: #0D1117; --text-2: #4B5C73; --text-3: #8BA0BE;
+  --accent: #0D9488; --accent-dim: rgba(13,148,136,.1);
+  --pass: #059669; --pass-bg: rgba(5,150,105,.09);
+  --fail: #DC2626; --fail-bg: rgba(220,38,38,.09);
+  --skip: #64748B; --skip-bg: rgba(100,116,139,.09);
+  --pend: #94A3B8; --pend-bg: rgba(148,163,184,.09);
+  --c-str: #0D9488; --c-num: #7C3AED; --c-true: #059669;
+  --c-false: #B45309; --c-null: #DC2626; --c-arr: #2563EB;
+  --xe-ok: #059669; --xe-ok-bg: rgba(5,150,105,.09);
+  --xe-err: #DC2626; --xe-err-bg: rgba(220,38,38,.08);
+  --radius: 8px; --radius-sm: 5px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0D1117; --surface: #161C26; --surface-2: #1E2A3A;
+    --border: #263347; --text: #E2E8F4; --text-2: #7A8CA8; --text-3: #4A6080;
+    --accent: #2DD4BF; --accent-dim: rgba(45,212,191,.1);
+    --pass: #34D399; --pass-bg: rgba(52,211,153,.1);
+    --fail: #F87171; --fail-bg: rgba(248,113,113,.1);
+    --skip: #64748B; --skip-bg: rgba(100,116,139,.15);
+    --pend: #94A3B8; --pend-bg: rgba(148,163,184,.1);
+    --c-str: #2DD4BF; --c-num: #A78BFA; --c-true: #34D399;
+    --c-false: #FBBF24; --c-null: #F87171; --c-arr: #60A5FA;
+    --xe-ok: #34D399; --xe-ok-bg: rgba(52,211,153,.1);
+    --xe-err: #F87171; --xe-err-bg: rgba(248,113,113,.1);
+    --shadow: 0 1px 3px rgba(0,0,0,.3); --shadow-md: 0 4px 12px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="light"] {
+  --bg: #F1F5FB; --surface: #FFFFFF; --surface-2: #F4F7FC;
+  --border: #DDE5F4; --text: #0D1117; --text-2: #4B5C73; --text-3: #8BA0BE;
+  --accent: #0D9488; --accent-dim: rgba(13,148,136,.1);
+  --pass: #059669; --pass-bg: rgba(5,150,105,.09);
+  --fail: #DC2626; --fail-bg: rgba(220,38,38,.09);
+  --skip: #64748B; --skip-bg: rgba(100,116,139,.09);
+  --pend: #94A3B8; --pend-bg: rgba(148,163,184,.09);
+  --xe-ok: #059669; --xe-ok-bg: rgba(5,150,105,.09);
+  --xe-err: #DC2626; --xe-err-bg: rgba(220,38,38,.08);
+}
+:root[data-theme="dark"] {
+  --bg: #0D1117; --surface: #161C26; --surface-2: #1E2A3A;
+  --border: #263347; --text: #E2E8F4; --text-2: #7A8CA8; --text-3: #4A6080;
+  --accent: #2DD4BF; --accent-dim: rgba(45,212,191,.1);
+  --pass: #34D399; --pass-bg: rgba(52,211,153,.1);
+  --fail: #F87171; --fail-bg: rgba(248,113,113,.1);
+  --skip: #64748B; --skip-bg: rgba(100,116,139,.15);
+  --pend: #94A3B8; --pend-bg: rgba(148,163,184,.1);
+  --xe-ok: #34D399; --xe-ok-bg: rgba(52,211,153,.1);
+  --xe-err: #F87171; --xe-err-bg: rgba(248,113,113,.1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body { font-family: system-ui,-apple-system,"Segoe UI",sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; min-height: 100vh; }
+code, .mono { font-family: "JetBrains Mono","Cascadia Code","Fira Code",ui-monospace,monospace; font-size: .85em; }
+.topbar { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; padding: 10px 20px; box-shadow: var(--shadow); flex-wrap: wrap; }
+.topbar-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .95rem; white-space: nowrap; }
+.topbar-logo-text { color: var(--accent); }
+.global-stats { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gstat { display: flex; align-items: center; gap: 4px; font-size: .8rem; font-weight: 600; padding: 2px 8px; border-radius: 20px; font-variant-numeric: tabular-nums; }
+.gstat.pass { color: var(--pass); background: var(--pass-bg); }
+.gstat.fail { color: var(--fail); background: var(--fail-bg); }
+.gstat.skip { color: var(--skip); background: var(--skip-bg); }
+.gstat.pend { color: var(--pend); background: var(--pend-bg); }
+.gstat.total { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
+.topbar-sep { flex: 1; min-width: 8px; }
+.filter-tabs { display: flex; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px; }
+.filter-tab { padding: 3px 10px; border-radius: 4px; border: none; background: transparent; color: var(--text-2); font-size: .78rem; font-weight: 500; cursor: pointer; transition: background .15s, color .15s; }
+.filter-tab:hover { background: var(--border); color: var(--text); }
+.filter-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.import-btn { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .12s, color .12s, border-color .12s; white-space: nowrap; }
+.import-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.theme-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: color .15s, background .15s; }
+.theme-btn:hover { color: var(--text); background: var(--border); }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--text); color: var(--surface); padding: 10px 18px; border-radius: 8px; font-size: .82rem; font-weight: 600; box-shadow: var(--shadow-md); z-index: 9999; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.layout { display: flex; align-items: flex-start; }
+.sidebar { width: 240px; flex-shrink: 0; position: sticky; top: 53px; height: calc(100vh - 53px); overflow-y: auto; border-right: 1px solid var(--border); padding: 12px 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.sidebar-label { padding: 0 14px 8px; font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.nav-item { display: block; padding: 7px 14px; text-decoration: none; color: var(--text-2); border-left: 2px solid transparent; transition: background .12s, color .12s, border-color .12s; }
+.nav-item:hover { background: var(--surface-2); color: var(--text); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); border-left-color: var(--accent); }
+.nav-item-name { font-size: .82rem; font-family: "JetBrains Mono","Cascadia Code",ui-monospace,monospace; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-item-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.nav-bar { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.nav-bar-fill { height: 100%; border-radius: 2px; background: var(--pass); transition: width .3s; }
+.nav-stats { font-size: .72rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-3); }
+.nav-stats .s-pass { color: var(--pass); }
+.nav-stats .s-fail { color: var(--fail); }
+.main { flex: 1; min-width: 0; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+.tool-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.tool-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 12px; }
+.tool-header-text { flex: 1; min-width: 0; }
+.tool-name { font-family: "JetBrains Mono","Cascadia Code",ui-monospace,monospace; font-size: .92rem; font-weight: 700; color: var(--text); word-break: break-all; }
+.tool-name span { color: var(--text-3); }
+.tool-desc { font-size: .8rem; color: var(--text-2); margin-top: 2px; }
+.tool-ext { display: inline-flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.ext-tag { font-family: ui-monospace,monospace; font-size: .7rem; padding: 1px 6px; border-radius: 3px; background: var(--accent-dim); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); }
+.add-test-btn { flex-shrink: 0; align-self: center; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+.add-test-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.test-table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 7px 12px; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr.hidden-row { display: none; }
+.test-row { transition: background .1s; }
+.test-row:hover { background: var(--surface-2); }
+.test-row[data-status="pass"] { border-left: 3px solid var(--pass); }
+.test-row[data-status="fail"] { border-left: 3px solid var(--fail); background: var(--fail-bg); }
+.test-row[data-status="skip"] { border-left: 3px solid var(--border); opacity: .7; }
+.test-row[data-status="pending"] { border-left: 3px solid transparent; }
+.col-name { min-width: 180px; max-width: 260px; }
+.col-params { min-width: 180px; }
+.col-status { width: 90px; text-align: center; }
+.col-notes { min-width: 140px; }
+.col-del { width: 36px; text-align: center; }
+.test-name-cell { display: flex; align-items: flex-start; gap: 6px; }
+.enu-toggle { flex-shrink: 0; margin-top: 2px; width: 16px; height: 16px; border: none; background: none; color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .65rem; border-radius: 3px; padding: 0; transition: color .12s, background .12s; }
+.enu-toggle:hover { color: var(--accent); background: var(--accent-dim); }
+.enu-toggle.open { color: var(--accent); }
+.test-name-text { font-size: .84rem; font-weight: 500; color: var(--text); }
+.test-name-custom-badge { display: inline-block; font-size: .65rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 0 4px; border-radius: 3px; margin-left: 5px; background: var(--accent-dim); color: var(--accent); vertical-align: middle; }
+.xe-badge { display: inline-flex; align-items: center; gap: 3px; font-size: .64rem; font-weight: 700; letter-spacing: .04em; padding: 1px 5px; border-radius: 3px; margin-top: 3px; font-family: "JetBrains Mono","Cascadia Code",ui-monospace,monospace; }
+.xe-badge.ok { background: var(--xe-ok-bg); color: var(--xe-ok); }
+.xe-badge.err { background: var(--xe-err-bg); color: var(--xe-err); }
+.xe-badge.skip { background: var(--skip-bg); color: var(--skip); }
+.enu-row { display: none; }
+.enu-row.open { display: table-row; }
+.enu-row.hidden-row { display: none !important; }
+.enu-row td { padding: 0; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.enu-box { padding: 10px 14px 12px 40px; border-left: 3px solid var(--accent); font-size: .8rem; line-height: 1.6; }
+.enu-line { display: flex; align-items: baseline; gap: 8px; color: var(--text-2); }
+.enu-lbl { flex-shrink: 0; font-size: .67rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); min-width: 74px; }
+.enu-val { color: var(--text); }
+.param-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.param-chip { display: inline-flex; align-items: center; gap: 3px; font-family: "JetBrains Mono","Cascadia Code",ui-monospace,monospace; font-size: .72rem; padding: 2px 6px; border-radius: 4px; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; background: var(--surface-2); border: 1px solid var(--border); }
+.chip-key { color: var(--text-2); } .chip-sep { color: var(--text-3); }
+.chip-val-str { color: var(--c-str); } .chip-val-num { color: var(--c-num); }
+.chip-val-true { color: var(--c-true); } .chip-val-false { color: var(--c-false); }
+.chip-val-null { color: var(--c-null); } .chip-val-arr { color: var(--c-arr); }
+.no-params { font-size: .78rem; color: var(--text-3); font-style: italic; }
+.status-btn { display: inline-flex; align-items: center; justify-content: center; width: 76px; padding: 4px 8px; border-radius: 20px; border: none; cursor: pointer; font-size: .75rem; font-weight: 700; transition: opacity .12s, transform .1s; gap: 4px; }
+.status-btn:hover { opacity: .85; transform: scale(1.04); }
+.status-btn[data-s="pending"] { background: var(--pend-bg); color: var(--pend); }
+.status-btn[data-s="pass"] { background: var(--pass-bg); color: var(--pass); }
+.status-btn[data-s="fail"] { background: var(--fail-bg); color: var(--fail); }
+.status-btn[data-s="skip"] { background: var(--skip-bg); color: var(--skip); }
+.notes-text { font-size: .8rem; color: var(--text-2); cursor: text; min-height: 20px; outline: none; border-radius: 4px; padding: 2px 4px; transition: background .12s; white-space: pre-wrap; word-break: break-word; }
+.notes-text:hover { background: var(--surface-2); }
+.notes-text:focus { background: var(--surface-2); box-shadow: 0 0 0 2px var(--accent); }
+.notes-placeholder { color: var(--text-3); font-style: italic; pointer-events: none; font-size: .78rem; }
+.del-btn { width: 24px; height: 24px; border-radius: 4px; border: none; background: transparent; color: var(--text-3); font-size: 1rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: color .12s, background .12s; line-height: 1; }
+.del-btn:hover { color: var(--fail); background: var(--fail-bg); }
+.add-form { padding: 12px 16px; background: var(--surface-2); border-top: 1px solid var(--border); display: none; gap: 10px; flex-direction: column; }
+.add-form.open { display: flex; }
+.add-form-row { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.add-form label { font-size: .75rem; font-weight: 600; color: var(--text-2); display: block; margin-bottom: 3px; }
+.add-form input, .add-form textarea { width: 100%; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: .82rem; outline: none; transition: border-color .12s; font-family: inherit; }
+.add-form input:focus, .add-form textarea:focus { border-color: var(--accent); }
+.add-form textarea { font-family: "JetBrains Mono","Cascadia Code",ui-monospace,monospace; font-size: .78rem; resize: vertical; min-height: 60px; }
+.add-form-field-name { flex: 2; min-width: 150px; } .add-form-field-params { flex: 3; min-width: 200px; }
+.add-form-actions { display: flex; gap: 8px; align-self: flex-end; }
+.btn-save { padding: 6px 14px; border-radius: var(--radius-sm); border: none; background: var(--accent); color: #fff; font-size: .8rem; font-weight: 700; cursor: pointer; transition: opacity .12s; }
+.btn-save:hover { opacity: .88; }
+.btn-cancel { padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text-2); font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .12s; }
+.btn-cancel:hover { background: var(--border); }
+.add-form-error { font-size: .75rem; color: var(--fail); }
+.reset-bar { padding: 10px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+.reset-btn { font-size: .75rem; color: var(--text-3); background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color .12s; }
+.reset-btn:hover { color: var(--fail); }
+@media (max-width: 700px) { .sidebar { display: none; } .topbar { flex-wrap: wrap; gap: 8px; } .main { padding: 14px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+    <span>iLovePDF MCP <span class="topbar-logo-text">— Test Suite</span></span>
+  </div>
+  <div class="global-stats" id="global-stats"></div>
+  <div class="topbar-sep"></div>
+  <div class="filter-tabs" id="filter-tabs">
+    <button class="filter-tab active" data-filter="all">Todos</button>
+    <button class="filter-tab" data-filter="pending">Pendiente</button>
+    <button class="filter-tab" data-filter="pass">Pass</button>
+    <button class="filter-tab" data-filter="fail">Fail</button>
+    <button class="filter-tab" data-filter="skip">Skip</button>
+  </div>
+  <button class="import-btn" id="import-btn" title="Importar test-results.json generado por el runner">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Importar resultados
+  </button>
+  <input type="file" id="results-file" accept=".json" style="display:none">
+  <button class="theme-btn" id="theme-btn" title="Cambiar tema">&#127763;</button>
+</div>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main" id="main"></main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOOLS = [
+  { id:'compress-pdf', label:'ilovepdf_compress_pdf', desc:'Reduce el tamano del PDF sin perder calidad.', ext:['.pdf'], tests:[
+    { name:'Sin parametros (usa defaults)', params:{}, en:'AWS_Certified_AI_Practitioner.pdf - comprimir sin opciones (default compression_level="recommended"). Esperar: success, PDF generado mas pequeno.', xe:false },
+    { name:'compression_level: recommended', params:{ compression_level:'recommended' }, en:'AWS_Certified_AI_Practitioner.pdf - compression_level="recommended" explicito. Esperar: success.', xe:false },
+    { name:'compression_level: extreme', params:{ compression_level:'extreme' }, en:'AWS_Certified_AI_Practitioner.pdf - compression_level="extreme". Esperar: success, compresion maxima.', xe:false },
+    { name:'compression_level: low', params:{ compression_level:'low' }, en:'AWS_Certified_AI_Practitioner.pdf - compression_level="low". Esperar: success, compresion ligera.', xe:false },
+    { name:'Enum invalido -> Zod error', params:{ compression_level:'ultra' }, en:'AWS_Certified_AI_Practitioner.pdf - compression_level="ultra" (no existe en el enum). Esperar: error VALIDATION_ERROR - Zod rechaza antes de llamar a la API.', xe:true },
+    { name:'Param inexistente -> ignorado', params:{ fake_option:'yes' }, en:'AWS_Certified_AI_Practitioner.pdf - fake_option="yes" (campo desconocido). Esperar: success - iLovePDF ignora parametros desconocidos silenciosamente.', xe:false },
+  ]},
+  { id:'pdf-to-jpg', label:'ilovepdf_pdf_to_jpg', desc:'Convierte paginas PDF a imagenes JPEG.', ext:['.pdf'], tests:[
+    { name:'Sin parametros', params:{}, en:'AWS_Certified_AI_Practitioner.pdf - sin opciones (defaults pdfjpg_mode="pages"). Esperar: success, una imagen JPEG por pagina.', xe:false },
+    { name:'pdfjpg_mode: pages', params:{ pdfjpg_mode:'pages' }, en:'AWS_Certified_AI_Practitioner.pdf - pdfjpg_mode="pages". Esperar: success.', xe:false },
+    { name:'pdfjpg_mode: extract (extrae imagenes)', params:{ pdfjpg_mode:'extract' }, en:'AWS_Certified_AI_Practitioner.pdf - pdfjpg_mode="extract". Esperar: success, extrae imagenes embebidas en el PDF.', xe:false },
+    { name:'quality: Normal (150 dpi)', params:{ quality:'Normal' }, en:'AWS_Certified_AI_Practitioner.pdf - quality="Normal". Esperar: success. quality="Normal" se convierte internamente a dpi=150 antes de llamar a la API (la API no acepta "quality", solo "dpi").', xe:false },
+    { name:'quality: High (300 dpi)', params:{ quality:'High' }, en:'AWS_Certified_AI_Practitioner.pdf - quality="High". Esperar: success. quality="High" se convierte internamente a dpi=300 antes de llamar a la API (la API no acepta "quality", solo "dpi").', xe:false },
+    { name:'quality: Normal + extract', params:{ pdfjpg_mode:'extract', quality:'Normal' }, en:'AWS_Certified_AI_Practitioner.pdf - pdfjpg_mode="extract", quality="Normal". Esperar: success.', xe:false },
+    { name:'Enum invalido -> Zod error', params:{ pdfjpg_mode:'thumbnails' }, en:'AWS_Certified_AI_Practitioner.pdf - pdfjpg_mode="thumbnails" (no existe). Esperar: error VALIDATION_ERROR - Zod rechaza.', xe:true },
+    { name:'Param dpi directo (desconocido)', params:{ dpi:200 }, en:'AWS_Certified_AI_Practitioner.pdf - dpi=200 (campo desconocido). Esperar: success - API ignora el param.', xe:false },
+  ]},
+  { id:'image-to-pdf', label:'ilovepdf_image_to_pdf', desc:'Convierte imagenes JPG/PNG/TIFF a un unico PDF.', ext:['.jpg','.png','.tiff'], tests:[
+    { name:'Sin parametros', params:{}, en:'iLovePDFLogo.png - sin opciones (defaults portrait, fit, margin=0, merge_after=true). Esperar: success.', xe:false },
+    { name:'Landscape + A4', params:{ orientation:'landscape', pagesize:'A4' }, en:'iLovePDFLogo.png - orientation="landscape", pagesize="A4". Esperar: success.', xe:false },
+    { name:'Portrait + letter + margen 10', params:{ orientation:'portrait', pagesize:'letter', margin:10 }, en:'iLovePDFLogo.png - portrait, letter, margin=10. Esperar: success.', xe:false },
+    { name:'Sin fusionar (1 PDF por imagen)', params:{ merge_after:false }, en:'iLovePDFLogo.png - merge_after=false (1 PDF por imagen). Esperar: success.', xe:false },
+    { name:'Landscape + fit -> normalizer usa A4', params:{ orientation:'landscape', pagesize:'fit' }, en:'iLovePDFLogo.png - orientation="landscape", pagesize="fit". El normalizer cambia pagesize a "A4" porque fit+landscape es invalido. Esperar: success con warning en el resultado.', xe:false },
+    { name:'Orientacion invalida -> normalizer usa portrait', params:{ orientation:'sideways' }, en:'iLovePDFLogo.png - orientation="sideways" (invalida). El normalizer la reemplaza por "portrait" silenciosamente. Esperar: success.', xe:false },
+    { name:'Pagesize invalido -> normalizer usa fit', params:{ pagesize:'A3' }, en:'iLovePDFLogo.png - pagesize="A3" (no soportado). El normalizer usa "fit". Esperar: success.', xe:false },
+    { name:'margin negativo -> normalizer usa 0', params:{ margin:-10 }, en:'iLovePDFLogo.png - margin=-10. El normalizer lo cambia a 0. Esperar: success con warning.', xe:false },
+  ]},
+  { id:'office-to-pdf', label:'ilovepdf_office_to_pdf', desc:'Convierte Word, Excel y PowerPoint a PDF.', ext:['.docx','.xlsx','.pptx'], tests:[
+    { name:'Archivo Word (.docx)', params:{}, en:'SKIP - No hay archivos .docx en el directorio de trabajo. Probar manualmente con un archivo Word real.', xe:null },
+    { name:'Archivo Excel (.xlsx)', params:{}, en:'SKIP - No hay archivos .xlsx en el directorio de trabajo. Probar manualmente con un archivo Excel real.', xe:null },
+    { name:'Archivo PowerPoint (.pptx)', params:{}, en:'SKIP - No hay archivos .pptx en el directorio de trabajo. Probar manualmente con un archivo PowerPoint real.', xe:null },
+    { name:'Param inexistente -> ignorado', params:{ preserve_fonts:true }, en:'SKIP - Requiere archivo Office. preserve_fonts=true es un param desconocido; si se prueba manualmente, esperar success.', xe:null },
+  ]},
+  { id:'merge-pdf', label:'ilovepdf_merge_pdf', desc:'Combina multiples PDFs en uno solo.', ext:['.pdf'], tests:[
+    { name:'2 archivos (minimo requerido)', params:{}, en:'2x AWS_Certified_AI_Practitioner.pdf - combinar. Esperar: success, un PDF combinado.', xe:false },
+    { name:'3 o mas archivos', params:{}, en:'3x AWS_Certified_AI_Practitioner.pdf - combinar. Esperar: success.', xe:false },
+    { name:'Solo 1 archivo -> error de cardinalidad', params:{}, en:'1x AWS_Certified_AI_Practitioner.pdf - merge requiere minimo 2 fuentes. Esperar: error VALIDATION_ERROR (assertCardinality en handler).', xe:true },
+    { name:'Param inexistente -> ignorado', params:{ order:'alphabetical' }, en:'2x AWS_Certified_AI_Practitioner.pdf - order="alphabetical" (param desconocido). Esperar: success - API ignora el param.', xe:false },
+  ]},
+  { id:'split-pdf', label:'ilovepdf_split_pdf', desc:'Divide un PDF en multiples archivos por rangos o chunks.', ext:['.pdf'], tests:[
+    { name:'Sin parametros -> default split_mode: ranges', params:{}, en:'AWS_Certified_AI_Practitioner.pdf - sin parametros. Los defaults dividen en paginas individuales. Esperar: success.', xe:false },
+    { name:'Ranges: 1-3 y 4-6', params:{ split_mode:'ranges', ranges:'1-3,4-6' }, en:'AWS_Certified_AI_Practitioner.pdf - split_mode="ranges", ranges="1-3,4-6". Esperar: success.', xe:false },
+    { name:'Fixed range: 2 paginas por chunk', params:{ split_mode:'fixed_range', fixed_range:2 }, en:'AWS_Certified_AI_Practitioner.pdf - fixed_range=2 (chunks de 2 paginas). Esperar: success.', xe:false },
+    { name:'Remove pages: pagina 2 y 5', params:{ split_mode:'remove_pages', remove_pages:'2,5' }, en:'AWS_Certified_AI_Practitioner.pdf - remove_pages="2,5". Esperar: success, PDF sin paginas 2 y 5.', xe:false },
+    { name:'Ranges + merge_after: true', params:{ split_mode:'ranges', ranges:'1-3,4-6', merge_after:true }, en:'AWS_Certified_AI_Practitioner.pdf - ranges="1-3,4-6", merge_after=true. Los chunks se fusionan al final. Esperar: success.', xe:false },
+    { name:'Solo fixed_range -> normalizer infiere modo', params:{ fixed_range:3 }, en:'AWS_Certified_AI_Practitioner.pdf - solo fixed_range=3. El normalizer infiere split_mode="fixed_range". Esperar: success.', xe:false },
+    { name:'Solo ranges -> normalizer infiere modo', params:{ ranges:'1-5' }, en:'AWS_Certified_AI_Practitioner.pdf - solo ranges="1-5". El normalizer infiere split_mode="ranges". Esperar: success.', xe:false },
+    { name:'split_mode invalido -> normalizer usa ranges', params:{ split_mode:'pages', ranges:'1-2' }, en:'AWS_Certified_AI_Practitioner.pdf - split_mode="pages" (invalido), normalizer lo cambia a "ranges". Esperar: success.', xe:false },
+    { name:'merge_after con fixed_range -> ignorado', params:{ split_mode:'fixed_range', fixed_range:1, merge_after:true }, en:'AWS_Certified_AI_Practitioner.pdf - merge_after=true con fixed_range. El normalizer lo pone en false. Esperar: success con warning.', xe:false },
+    { name:'fixed_range: 0 -> normalizer usa 1', params:{ split_mode:'fixed_range', fixed_range:0 }, en:'AWS_Certified_AI_Practitioner.pdf - fixed_range=0. El normalizer lo cambia a 1. Esperar: success con warning.', xe:false },
+  ]},
+  { id:'unlock', label:'ilovepdf_unlock', desc:'Elimina la contrasena conocida de un PDF.', ext:['.pdf'], tests:[
+    { name:'PDF sin contrasena', params:{}, en:'SKIP - PDF no protegido. Comportamiento incierto. Probar con un PDF protegido.', xe:null },
+    { name:'Con password correcto', params:{ password:'correct_password' }, en:'SKIP - Requiere un PDF protegido con contrasena conocida.', xe:null },
+    { name:'Con password incorrecto -> API error', params:{ password:'wrong' }, en:'SKIP - Requiere un PDF protegido para verificar el error WrongPassword.', xe:null },
+    { name:'PDF protegido sin pasar password -> API error', params:{}, en:'SKIP - Requiere un PDF protegido para verificar que la API falle por falta de contrasena.', xe:null },
+  ]},
+  { id:'watermark', label:'ilovepdf_watermark', desc:'Agrega marca de agua de texto o imagen a un PDF.', ext:['.pdf'], tests:[
+    { name:'Sin parametros (usa todos los defaults)', params:{}, en:'AWS_Certified_AI_Practitioner.pdf - defaults incluyen mode="text" pero no tienen text. La API requiere text cuando mode=text. Esperar: error INTERNAL.', xe:true },
+    { name:'Texto basico: BORRADOR', params:{ text:'BORRADOR' }, en:'AWS_Certified_AI_Practitioner.pdf - text="BORRADOR" con defaults de posicion/fuente. Esperar: success.', xe:false },
+    { name:'Texto + fuente Times + rojo', params:{ text:'CONFIDENCIAL', font_family:'Times New Roman', font_color:'#FF0000', font_size:24 }, en:'AWS_Certified_AI_Practitioner.pdf - texto rojo 24pt en Times New Roman. Esperar: success.', xe:false },
+    { name:'Mosaico + 45 grados + 50% transparencia', params:{ text:'DRAFT', mosaic:true, rotation:45, transparency:50 }, en:'AWS_Certified_AI_Practitioner.pdf - mosaico, rotacion 45 grados, 50% opacidad. Esperar: success.', xe:false },
+    { name:'Solo paginas 1-3', params:{ text:'BORRADOR', pages:'1-3' }, en:'AWS_Certified_AI_Practitioner.pdf - marca solo en paginas 1-3. Esperar: success.', xe:false },
+    { name:'Abajo a la derecha', params:{ text:'TEST', vertical_position:'bottom', horizontal_position:'right' }, en:'AWS_Certified_AI_Practitioner.pdf - posicion bottom-right. Esperar: success.', xe:false },
+    { name:'Layer below (debajo del contenido)', params:{ text:'MARCA', layer:'below' }, en:'AWS_Certified_AI_Practitioner.pdf - layer="below" (detras del contenido). Esperar: success.', xe:false },
+    { name:'Fuente no soportada -> Arial Unicode MS', params:{ text:'TEST', font_family:'Helvetica' }, en:'AWS_Certified_AI_Practitioner.pdf - font_family="Helvetica". El normalizer la cambia a "Arial Unicode MS". Esperar: success con warning.', xe:false },
+    { name:'Color invalido "red" -> #000000', params:{ text:'TEST', font_color:'red' }, en:'AWS_Certified_AI_Practitioner.pdf - font_color="red". El normalizer intenta convertirlo; si falla usa "#000000". Esperar: success con warning.', xe:false },
+    { name:'Sin text en mode=text -> API error', params:{ mode:'text' }, en:'AWS_Certified_AI_Practitioner.pdf - mode="text" explicito pero sin text. Esperar: error INTERNAL (API rechaza).', xe:true },
+    { name:'font_style: Bold', params:{ text:'BOLD', font_style:'Bold' }, en:'AWS_Certified_AI_Practitioner.pdf - font_style="Bold". Esperar: success.', xe:false },
+    { name:'font_style: Italic', params:{ text:'ITALIC', font_style:'Italic' }, en:'AWS_Certified_AI_Practitioner.pdf - font_style="Italic". Esperar: success.', xe:false },
+  ]},
+  { id:'pagenumber', label:'ilovepdf_pagenumber', desc:'Agrega numeracion de paginas a un PDF.', ext:['.pdf'], tests:[
+    { name:'Sin parametros (usa todos los defaults)', params:{}, en:'AWS_Certified_AI_Practitioner.pdf - defaults: pages="all", text="{n}", bottom-center, Arial 14pt negro. Esperar: success.', xe:false },
+    { name:'Saltear portada (first_cover: true)', params:{ first_cover:true }, en:'AWS_Certified_AI_Practitioner.pdf - first_cover=true. El normalizer ajusta pages="2-end". Esperar: success.', xe:false },
+    { name:'Posicion: arriba a la derecha', params:{ vertical_position:'top', horizontal_position:'right' }, en:'AWS_Certified_AI_Practitioner.pdf - posicion top-right. Esperar: success.', xe:false },
+    { name:'Paginas pares/impares (facing_pages)', params:{ facing_pages:true }, en:'AWS_Certified_AI_Practitioner.pdf - facing_pages=true. Esperar: success.', xe:false },
+    { name:'Numero inicial: 10', params:{ starting_number:10 }, en:'AWS_Certified_AI_Practitioner.pdf - starting_number=10. Esperar: success.', xe:false },
+    { name:'Formato: "Pagina {n} de {p}"', params:{ text:'Pagina {n} de {p}' }, en:'AWS_Certified_AI_Practitioner.pdf - text="Pagina {n} de {p}". Esperar: success.', xe:false },
+    { name:'Fuente Times 10pt gris', params:{ font_family:'Times New Roman', font_size:10, font_color:'#666666' }, en:'AWS_Certified_AI_Practitioner.pdf - Times New Roman 10pt color gris. Esperar: success.', xe:false },
+    { name:'Vertical middle -> normalizer usa bottom', params:{ vertical_position:'middle' }, en:'AWS_Certified_AI_Practitioner.pdf - vertical_position="middle". El normalizer lo cambia a "bottom". Esperar: success con warning.', xe:false },
+    { name:'Solo paginas 2-end', params:{ pages:'2-end' }, en:'AWS_Certified_AI_Practitioner.pdf - pages="2-end" (omite la pagina 1). Esperar: success.', xe:false },
+    { name:'facing_pages + first_cover', params:{ facing_pages:true, first_cover:true }, en:'AWS_Certified_AI_Practitioner.pdf - combinacion facing_pages=true y first_cover=true. Esperar: success.', xe:false },
+  ]},
+  { id:'pdf-ocr', label:'ilovepdf_pdf_ocr', desc:'Extrae texto de PDFs escaneados usando OCR.', ext:['.pdf'], tests:[
+    { name:'Default (solo ingles)', params:{}, en:'AWS_Certified_AI_Practitioner.pdf - ocr_languages=["eng"] (default). Esperar: success.', xe:false },
+    { name:'Solo espanol', params:{ ocr_languages:['spa'] }, en:'AWS_Certified_AI_Practitioner.pdf - ocr_languages=["spa"]. Esperar: success.', xe:false },
+    { name:'Espanol + ingles', params:{ ocr_languages:['spa','eng'] }, en:'AWS_Certified_AI_Practitioner.pdf - ocr_languages=["spa","eng"]. Esperar: success.', xe:false },
+    { name:'Japones', params:{ ocr_languages:['jpn'] }, en:'AWS_Certified_AI_Practitioner.pdf - ocr_languages=["jpn"]. Esperar: success.', xe:false },
+    { name:'Codigo invalido -> API lo maneja', params:{ ocr_languages:['xyz'] }, en:'AWS_Certified_AI_Practitioner.pdf - ocr_languages=["xyz"] (codigo inexistente). Esperar: error INTERNAL (API rechaza el idioma).', xe:true },
+    { name:'Array vacio', params:{ ocr_languages:[] }, en:'SKIP - ocr_languages=[]. Comportamiento incierto.', xe:null },
+    { name:'Param extra desconocido -> ignorado', params:{ ocr_languages:['eng'], dpi:300 }, en:'AWS_Certified_AI_Practitioner.pdf - dpi=300 (param desconocido). Esperar: success - API ignora el param.', xe:false },
+  ]},
+];
+
+const STATUS_CYCLE = ['pending','pass','fail','skip'];
+const STATUS_ICONS = { pending:'o', pass:'v', fail:'x', skip:'-' };
+const STATUS_LABELS = { pending:'Pendiente', pass:'Pass', fail:'Fail', skip:'Skip' };
+const LS_KEY = 'ilmcp-test-state-v3';
+
+function loadState() { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; } }
+function saveState(st) { localStorage.setItem(LS_KEY, JSON.stringify(st)); }
+
+let state = loadState();
+if (!state.tests) state.tests = {};
+if (!state.filter) state.filter = 'all';
+if (!state.theme) state.theme = 'auto';
+
+function getTest(toolId, testKey) { return (state.tests[toolId] || {})[testKey] || { status:'pending', notes:'' }; }
+function setTest(toolId, testKey, data) {
+  if (!state.tests[toolId]) state.tests[toolId] = {};
+  state.tests[toolId][testKey] = { ...getTest(toolId, testKey), ...data };
+  saveState(state);
+}
+function getCustomTests(toolId) {
+  const t = state.tests[toolId] || {};
+  return Object.entries(t).filter(([k]) => k.startsWith('c:')).map(([k, v]) => ({ key: k, ...v })).filter(t => t.name);
+}
+function deleteCustomTest(toolId, testKey) { if (!state.tests[toolId]) return; delete state.tests[toolId][testKey]; saveState(state); }
+
+function countForTool(toolId) {
+  const tool = TOOLS.find(t => t.id === toolId);
+  const customs = getCustomTests(toolId);
+  const allTests = [...tool.tests.map((_,i) => 'd:'+i), ...customs.map(c => c.key)];
+  const counts = { pass:0, fail:0, skip:0, pending:0 };
+  for (const k of allTests) { const s = getTest(toolId, k).status || 'pending'; counts[s]++; }
+  counts.total = allTests.length;
+  return counts;
+}
+function countAll() {
+  const counts = { pass:0, fail:0, skip:0, pending:0, total:0 };
+  for (const tool of TOOLS) { const c = countForTool(tool.id); counts.pass+=c.pass; counts.fail+=c.fail; counts.skip+=c.skip; counts.pending+=c.pending; counts.total+=c.total; }
+  return counts;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderParamChips(params) {
+  const entries = Object.entries(params);
+  if (entries.length === 0) return '<span class="no-params">sin parametros</span>';
+  return '<div class="param-chips">' + entries.map(function([k, v]) {
+    let cls = 'chip-val-str', display;
+    if (v === null) { cls = 'chip-val-null'; display = 'null'; }
+    else if (v === true) { cls = 'chip-val-true'; display = 'true'; }
+    else if (v === false) { cls = 'chip-val-false'; display = 'false'; }
+    else if (typeof v === 'number') { cls = 'chip-val-num'; display = String(v); }
+    else if (Array.isArray(v)) { cls = 'chip-val-arr'; display = '[' + v.map(x => JSON.stringify(x)).join(', ') + ']'; }
+    else { display = JSON.stringify(v); }
+    const truncated = display.length > 22 ? display.slice(0, 20) + '...' : display;
+    return '<span class="param-chip" title="' + esc(k) + ': ' + esc(display) + '"><span class="chip-key">' + esc(k) + '</span><span class="chip-sep">:</span><span class="' + cls + '">' + esc(truncated) + '</span></span>';
+  }).join('') + '</div>';
+}
+
+function renderStatusBtn(status) {
+  const icons = { pending:'&#9711;', pass:'&#10003;', fail:'&#10007;', skip:'&mdash;' };
+  return '<button class="status-btn" data-s="' + status + '">' + (icons[status]||status) + ' ' + STATUS_LABELS[status] + '</button>';
+}
+
+function renderXeBadge(xe) {
+  if (xe === null) return '<span class="xe-badge skip">&mdash; skip auto</span>';
+  if (xe === true) return '<span class="xe-badge err">&#10007; espera error</span>';
+  return '<span class="xe-badge ok">&#10003; espera exito</span>';
+}
+
+function renderTestRow(toolId, testKey, name, params, isCustom, en, xe) {
+  const testData = getTest(toolId, testKey);
+  const status = testData.status || 'pending';
+  const notes = testData.notes || '';
+  const hidden = state.filter !== 'all' && state.filter !== status;
+  const enuId = 'enu-' + toolId + '-' + testKey.replace(/:/g,'-');
+  const hasEnu = en && en.length > 0;
+  const nameCell = '<div class="test-name-cell">' +
+    (hasEnu ? '<button class="enu-toggle" data-enu="' + enuId + '" title="Ver enunciado">&#9654;</button>' : '') +
+    '<div><span class="test-name-text">' + esc(name) + '</span>' +
+    (isCustom ? '<span class="test-name-custom-badge">custom</span>' : '') +
+    (!isCustom && xe !== undefined ? renderXeBadge(xe) : '') +
+    '</div></div>';
+  const testRow = '<tr class="test-row' + (hidden ? ' hidden-row' : '') + '" data-tool="' + toolId + '" data-key="' + testKey + '" data-status="' + status + '" data-enu="' + enuId + '">' +
+    '<td class="col-name">' + nameCell + '</td>' +
+    '<td class="col-params">' + renderParamChips(params) + '</td>' +
+    '<td class="col-status">' + renderStatusBtn(status) + '</td>' +
+    '<td class="col-notes"><div class="notes-text" contenteditable="true" data-tool="' + toolId + '" data-key="' + testKey + '" spellcheck="false">' + (notes ? esc(notes) : '') + '</div>' + (!notes ? '<span class="notes-placeholder">notas...</span>' : '') + '</td>' +
+    '<td class="col-del">' + (isCustom ? '<button class="del-btn" data-tool="' + toolId + '" data-key="' + testKey + '" title="Eliminar">&#215;</button>' : '') + '</td>' +
+    '</tr>';
+  if (!hasEnu) return testRow;
+  return testRow + '<tr class="enu-row' + (hidden ? ' hidden-row' : '') + '" id="' + enuId + '"><td colspan="5"><div class="enu-box"><div class="enu-line"><span class="enu-lbl">Enunciado</span><span class="enu-val">' + esc(en) + '</span></div></div></td></tr>';
+}
+
+function renderTool(tool) {
+  const customs = getCustomTests(tool.id);
+  let rows = '';
+  tool.tests.forEach(function(t, i) { rows += renderTestRow(tool.id, 'd:'+i, t.name, t.params, false, t.en, t.xe); });
+  customs.forEach(function(c) { rows += renderTestRow(tool.id, c.key, c.name, c.params||{}, true, '', undefined); });
+  return '<div class="tool-card" id="tool-' + tool.id + '">' +
+    '<div class="tool-header"><div class="tool-header-text">' +
+    '<div class="tool-name"><span>ilovepdf_</span>' + tool.id.replace(/-/g,'_') + '</div>' +
+    '<div class="tool-desc">' + esc(tool.desc) + '</div>' +
+    '<div class="tool-ext">' + tool.ext.map(function(e){ return '<span class="ext-tag">' + e + '</span>'; }).join('') + '</div>' +
+    '</div><button class="add-test-btn" data-tool="' + tool.id + '">+ Test</button></div>' +
+    '<div class="test-table-wrap"><table>' +
+    '<thead><tr><th class="col-name">Descripcion</th><th class="col-params">Parametros</th><th class="col-status">Estado</th><th class="col-notes">Notas</th><th class="col-del"></th></tr></thead>' +
+    '<tbody id="tbody-' + tool.id + '">' + rows + '</tbody>' +
+    '</table></div>' +
+    '<div class="add-form" id="form-' + tool.id + '">' +
+    '<div class="add-form-row"><div class="add-form-field-name"><label>Descripcion del test</label><input type="text" placeholder="Ej: Texto con fuente Arial + rojo" id="fname-' + tool.id + '"></div>' +
+    '<div class="add-form-field-params"><label>Parametros (JSON)</label><textarea placeholder=\'{ "text": "DRAFT", "rotation": 45 }\' id="fparams-' + tool.id + '"></textarea></div></div>' +
+    '<div class="add-form-row"><div id="ferr-' + tool.id + '" class="add-form-error"></div>' +
+    '<div class="add-form-actions"><button class="btn-cancel" data-tool="' + tool.id + '">Cancelar</button><button class="btn-save" data-tool="' + tool.id + '">Guardar test</button></div></div>' +
+    '</div>' +
+    '<div class="reset-bar"><button class="reset-btn" data-tool="' + tool.id + '">Resetear estados de esta herramienta</button></div>' +
+    '</div>';
+}
+
+function renderSidebar() {
+  let html = '<div class="sidebar-label">Herramientas</div>';
+  for (const tool of TOOLS) {
+    const c = countForTool(tool.id);
+    const pct = c.total > 0 ? Math.round((c.pass/c.total)*100) : 0;
+    html += '<a class="nav-item" href="#tool-' + tool.id + '"><span class="nav-item-name">' + tool.id.replace(/-/g,'_') + '</span><div class="nav-item-row"><div class="nav-bar"><div class="nav-bar-fill" style="width:' + pct + '%"></div></div><span class="nav-stats"><span class="s-pass">' + c.pass + '</span>/<span class="s-fail">' + c.fail + '</span>/' + c.total + '</span></div></a>';
+  }
+  document.getElementById('sidebar').innerHTML = html;
+}
+
+function renderGlobalStats() {
+  const c = countAll();
+  document.getElementById('global-stats').innerHTML = '<span class="gstat total">' + c.total + ' tests</span><span class="gstat pass">&#10003; ' + c.pass + '</span><span class="gstat fail">&#10007; ' + c.fail + '</span><span class="gstat skip">&mdash; ' + c.skip + '</span><span class="gstat pend">&#9711; ' + c.pending + '</span>';
+}
+
+function renderMain() { document.getElementById('main').innerHTML = TOOLS.map(t => renderTool(t)).join(''); }
+
+function applyFilter() {
+  document.querySelectorAll('.test-row').forEach(function(row) {
+    const hide = state.filter !== 'all' && state.filter !== row.dataset.status;
+    row.classList.toggle('hidden-row', hide);
+    const enuRow = document.getElementById(row.dataset.enu);
+    if (enuRow) { if (hide) enuRow.classList.add('hidden-row'); else enuRow.classList.remove('hidden-row'); }
+  });
+  document.querySelectorAll('.filter-tab').forEach(function(btn) { btn.classList.toggle('active', btn.dataset.filter === state.filter); });
+}
+
+function refreshToolSection(toolId) {
+  const tool = TOOLS.find(t => t.id === toolId);
+  const tbody = document.getElementById('tbody-' + toolId);
+  if (!tbody) return;
+  const customs = getCustomTests(toolId);
+  let rows = '';
+  tool.tests.forEach(function(t, i) { rows += renderTestRow(toolId, 'd:'+i, t.name, t.params, false, t.en, t.xe); });
+  customs.forEach(function(c) { rows += renderTestRow(toolId, c.key, c.name, c.params||{}, true, '', undefined); });
+  tbody.innerHTML = rows;
+  applyFilter();
+}
+
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 3200);
+}
+
+function importResults(json) {
+  let data;
+  try { data = JSON.parse(json); } catch { showToast('JSON invalido.'); return; }
+  if (!Array.isArray(data.results)) { showToast('Formato invalido - falta "results".'); return; }
+  for (const r of data.results) {
+    const toolId = r.toolId, testKey = r.testKey, status = r.status;
+    if (!toolId || !testKey || !['pass','fail','skip','pending'].includes(status)) continue;
+    setTest(toolId, testKey, { status });
+    const row = document.querySelector('.test-row[data-tool="' + toolId + '"][data-key="' + testKey + '"]');
+    if (row) {
+      row.dataset.status = status;
+      const btn = row.querySelector('.status-btn');
+      if (btn) { btn.dataset.s = status; btn.innerHTML = renderStatusBtn(status).replace(/<[^>]+>/g, '').trim(); btn.dataset.s = status; const tmp = document.createElement('div'); tmp.innerHTML = renderStatusBtn(status); const nb = tmp.firstChild; if(nb){ btn.dataset.s = nb.dataset.s; btn.innerHTML = nb.innerHTML; } }
+    }
+  }
+  applyFilter(); renderSidebar(); renderGlobalStats();
+  const s = data.summary;
+  showToast(s ? 'Importado: ' + s.passed + ' pass - ' + s.failed + ' fail - ' + s.skipped + ' skip de ' + s.total : 'Resultados importados.');
+}
+
+function attachStatusAndNotes(root) {
+  root.querySelectorAll('.status-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      const row = e.target.closest('.test-row'); if (!row) return;
+      const toolId = row.dataset.tool, key = row.dataset.key;
+      const cur = getTest(toolId, key).status || 'pending';
+      const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur) + 1) % STATUS_CYCLE.length];
+      setTest(toolId, key, { status: next });
+      row.dataset.status = next;
+      const tmp = document.createElement('div'); tmp.innerHTML = renderStatusBtn(next); const nb = tmp.firstChild;
+      if (nb) { btn.dataset.s = nb.dataset.s; btn.innerHTML = nb.innerHTML; }
+      applyFilter(); renderSidebar(); renderGlobalStats();
+    });
+  });
+  root.querySelectorAll('.notes-text').forEach(function(el) {
+    el.addEventListener('focus', function(){ const ph = el.nextElementSibling; if (ph && ph.classList.contains('notes-placeholder')) ph.style.display = 'none'; });
+    el.addEventListener('blur', function(){
+      const val = el.innerText.trim();
+      setTest(el.dataset.tool, el.dataset.key, { notes: val });
+      const ph = el.nextElementSibling; if (ph && ph.classList.contains('notes-placeholder')) ph.style.display = val ? 'none' : '';
+    });
+    el.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); } });
+  });
+  root.querySelectorAll('.del-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(){
+      const toolId = btn.dataset.tool, key = btn.dataset.key;
+      if (!confirm('Eliminar este test?')) return;
+      deleteCustomTest(toolId, key); refreshToolSection(toolId);
+      attachStatusAndNotes(document.getElementById('tbody-' + toolId));
+      renderSidebar(); renderGlobalStats();
+    });
+  });
+}
+
+function attachEvents() {
+  attachStatusAndNotes(document);
+  document.querySelectorAll('.enu-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function(){
+      const enuRow = document.getElementById(btn.dataset.enu); if (!enuRow) return;
+      const open = enuRow.classList.toggle('open');
+      btn.innerHTML = open ? '&#9660;' : '&#9654;'; btn.classList.toggle('open', open);
+    });
+  });
+  document.querySelectorAll('.add-test-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(){
+      const form = document.getElementById('form-' + btn.dataset.tool);
+      form.classList.toggle('open');
+      if (form.classList.contains('open')) document.getElementById('fname-' + btn.dataset.tool).focus();
+    });
+  });
+  document.querySelectorAll('.btn-cancel').forEach(function(btn) {
+    btn.addEventListener('click', function(){
+      const t = btn.dataset.tool;
+      document.getElementById('form-' + t).classList.remove('open');
+      document.getElementById('fname-' + t).value = '';
+      document.getElementById('fparams-' + t).value = '';
+      document.getElementById('ferr-' + t).textContent = '';
+    });
+  });
+  document.querySelectorAll('.btn-save').forEach(function(btn) {
+    btn.addEventListener('click', function(){
+      const t = btn.dataset.tool;
+      const name = document.getElementById('fname-' + t).value.trim();
+      const paramsRaw = document.getElementById('fparams-' + t).value.trim();
+      const errEl = document.getElementById('ferr-' + t);
+      errEl.textContent = '';
+      if (!name) { errEl.textContent = 'El nombre es obligatorio.'; return; }
+      let params = {};
+      if (paramsRaw) { try { params = JSON.parse(paramsRaw); } catch { errEl.textContent = 'JSON invalido.'; return; } }
+      const key = 'c:' + Date.now();
+      setTest(t, key, { name, params, status:'pending', notes:'' });
+      document.getElementById('fname-' + t).value = '';
+      document.getElementById('fparams-' + t).value = '';
+      document.getElementById('form-' + t).classList.remove('open');
+      refreshToolSection(t); attachStatusAndNotes(document.getElementById('tbody-' + t));
+      renderSidebar(); renderGlobalStats();
+    });
+  });
+  document.querySelectorAll('.reset-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(){
+      const t = btn.dataset.tool;
+      if (!confirm('Resetear todos los estados de ' + t + '?')) return;
+      const tool = TOOLS.find(x => x.id === t);
+      const customs = getCustomTests(t);
+      [...tool.tests.map((_,i) => 'd:'+i), ...customs.map(c => c.key)].forEach(function(k){ setTest(t, k, { status:'pending', notes:'' }); });
+      refreshToolSection(t); attachStatusAndNotes(document.getElementById('tbody-' + t));
+      renderSidebar(); renderGlobalStats();
+    });
+  });
+}
+
+document.getElementById('filter-tabs').addEventListener('click', function(e) {
+  const btn = e.target.closest('.filter-tab'); if (!btn) return;
+  state.filter = btn.dataset.filter; saveState(state); applyFilter();
+});
+document.getElementById('import-btn').addEventListener('click', function(){ document.getElementById('results-file').click(); });
+document.getElementById('results-file').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) { importResults(ev.target.result); };
+  reader.readAsText(file); e.target.value = '';
+});
+document.getElementById('theme-btn').addEventListener('click', function(){
+  const cur = document.documentElement.dataset.theme || 'auto';
+  const next = cur === 'dark' ? 'light' : (cur === 'light' ? 'auto' : 'dark');
+  if (next === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = next;
+  state.theme = next; saveState(state);
+});
+if (state.theme && state.theme !== 'auto') document.documentElement.dataset.theme = state.theme;
+
+renderMain(); renderSidebar(); renderGlobalStats(); applyFilter(); attachEvents();
+</script>
+</body>
+</html>
