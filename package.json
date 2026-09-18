@@ -1,10 +1,16 @@
 {
   "name": "@ilovepdf/mcp",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "type": "module",
-  "bin": { "ilovepdf-mcp": "dist/index.js" },
-  "files": ["dist"],
-  "engines": { "node": ">=18" },
+  "bin": {
+    "ilovepdf-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",
