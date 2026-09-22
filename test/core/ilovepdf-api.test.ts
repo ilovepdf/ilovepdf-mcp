@@ -43,6 +43,14 @@ afterEach(() => {
   mock.restore();
 });
 
+function latestRequest(): [RequestInfo | URL, RequestInit | undefined] {
+  return mock.fetchMock.mock.calls.at(-1)! as [RequestInfo | URL, RequestInit | undefined];
+}
+
+function requestUrl(input: RequestInfo | URL): URL {
+  return new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url);
+}
+
 describe('authenticateILovePDF', () => {
   it('returns the JWT token on success', async () => {
     const token = await authenticateILovePDF('public-key');
@@ -62,6 +70,8 @@ describe('startILovePDFTask', () => {
     const result = await startILovePDFTask('compress', TEST_TOKEN);
     expect(result.server).toBe(TEST_SERVER);
     expect(result.task).toBe(TEST_TASK);
+    const [input] = latestRequest();
+    expect(requestUrl(input).searchParams.get('v')).toBe('mcp.v1');
   });
 
   it('throws when the API rejects the request', async () => {
@@ -81,6 +91,8 @@ describe('uploadCloudFile', () => {
     );
     expect(file.server_filename).toBe(TEST_SERVER_FILENAME);
     expect(file.filename).toBe(TEST_FILENAME);
+    const [, init] = latestRequest();
+    expect(JSON.parse(init?.body as string)).toMatchObject({ v: 'mcp.v1' });
   });
 
   it('throws on upload failure', async () => {
@@ -109,6 +121,7 @@ describe('uploadBinaryFile', () => {
     await uploadBinaryFile(TEST_SERVER, TEST_TASK, 'file.pdf', TEST_TOKEN, bytes);
     const [, init] = mock.fetchMock.mock.calls.at(-1)!;
     expect(init?.body).toBeInstanceOf(FormData);
+    expect((init?.body as FormData).get('v')).toBe('mcp.v1');
   });
 });
 
@@ -122,6 +135,8 @@ describe('processILovePDFTask', () => {
       { files: [{ server_filename: TEST_SERVER_FILENAME, filename: TEST_FILENAME }] }
     );
     expect(result.download_filename).toBe(TEST_DOWNLOAD_FILENAME);
+    const [, init] = latestRequest();
+    expect(JSON.parse(init?.body as string)).toMatchObject({ v: 'mcp.v1' });
   });
 
   it('extracts a nested error.message on failure', async () => {

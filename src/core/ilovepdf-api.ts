@@ -20,6 +20,9 @@ import type {
   ILovePDFProcessOptions,
 } from '../types.js';
 
+/** Identifies iLovePDF task lifecycle requests made by this MCP integration. */
+export const ILOVEPDF_REQUEST_VERSION = 'mcp.v1';
+
 /**
  * Extract error message from iLovePDF API response
  */
@@ -69,7 +72,7 @@ export async function startILovePDFTask(
   tool: string,
   token: string
 ): Promise<ILovePDFTask> {
-  const response = await fetch(`https://api.ilovepdf.com/v1/start/${tool}`, {
+  const response = await fetch(`https://api.ilovepdf.com/v1/start/${tool}?v=${ILOVEPDF_REQUEST_VERSION}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -105,6 +108,7 @@ export async function uploadCloudFile(
       task,
       cloud_file: fileUrl,
       filename,
+      v: ILOVEPDF_REQUEST_VERSION,
     }),
   });
 
@@ -152,6 +156,7 @@ export async function uploadBinaryFile(
   const uploadUrl = `https://${server}/v1/upload`;
   const form = new FormData();
   form.append('task', task);
+  form.append('v', ILOVEPDF_REQUEST_VERSION);
 
   const blob = new Blob([fileBytes], {
     type: contentType || guessMimeType(filename),
@@ -185,11 +190,7 @@ export async function processILovePDFTask(
   tool: string,
   options: ILovePDFProcessOptions
 ): Promise<ILovePDFProcessResponse> {
-  const payload = {
-    task,
-    tool,
-    ...options,
-  };
+  const payload = { ...options, task, tool, v: ILOVEPDF_REQUEST_VERSION };
 
   const response = await fetch(`https://${server}/v1/process`, {
     method: 'POST',
