@@ -1,6 +1,7 @@
 {
   "name": "@ilovepdf/mcp",
   "version": "1.1.0",
+  "description": "Official iLovePDF MCP server",
   "type": "module",
   "bin": {
     "ilovepdf-mcp": "dist/index.js"
@@ -10,6 +11,18 @@
   ],
   "engines": {
     "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilovepdf/ilovepdf-mcp.git"
+  },
+  "homepage": "https://github.com/ilovepdf/ilovepdf-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/ilovepdf/ilovepdf-mcp/issues"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

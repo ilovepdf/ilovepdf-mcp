@@ -208,7 +208,7 @@ function buildProcessOptions(
  * Construct a download URL from task creds.
  */
 function buildDownloadUrl(server: string, task: string, token: string): string {
-  return `https://${server}/v1/download/${task}?token=${token}`;
+  return `https://${server}/v1/download/${task}?token=${encodeURIComponent(token)}`;
 }
 
 /**
