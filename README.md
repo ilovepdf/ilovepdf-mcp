@@ -30,17 +30,6 @@ ILOVEPDF_PUBLIC_KEY=project_public_xxxxxxxx npx -y @ilovepdf/mcp
 
 > The server starts and lists all tools even when `ILOVEPDF_PUBLIC_KEY` is not set. The key is only required when a tool is actually called.
 
-### Run from source (before the npm release)
-
-Until the package is published to npm, run it from the repository. See [`docs/QUICKSTART.md`](docs/QUICKSTART.md) for the full step-by-step:
-
-```sh
-git clone https://github.com/ilovepdf/ilovepdf-mcp.git
-cd ilovepdf-mcp && git checkout staging
-npm install && npm run build     # produces dist/index.js
-```
-
-Then point your MCP client at the built entrypoint with an absolute path, e.g. `"command": "node", "args": ["/abs/path/to/ilovepdf-mcp/dist/index.js"]`.
 
 ## Environment variables
 
@@ -68,8 +57,6 @@ All file access is deny-by-default. Inputs and outputs must resolve to a path in
 | `ilovepdf_watermark` | Add a text or image watermark to a PDF |
 | `ilovepdf_pagenumber` | Add page numbers to a PDF |
 | `ilovepdf_pdf_ocr` | Extract text from scanned PDFs using OCR |
-
-> **Note:** `ilovepdf_unlock` (remove password/permission restrictions from a PDF) is **temporarily disabled**. Its code is preserved but commented out, so it is not registered as a tool for now. It may be re-enabled in a future release.
 
 <!--
 Temporarily disabled — re-enable this row when the unlock tool is published again:
