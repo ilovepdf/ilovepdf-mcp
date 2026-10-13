@@ -91,7 +91,7 @@ flowchart TD
     end
 
     subgraph derivation["per-operation derivation — tools/"]
-        tn["toolName(op)\n→ 'ilovepdf_compress_pdf', …\nrule: ilovepdf_ + snake_case(name)"]
+        tn["toolName(op)\n→ 'compress_pdf', …\nrule: snake_case(name), with explicit overrides"]
         is["buildInputShape(op)\n→ ZodRawShape { sources, output_path?, options? }"]
         dt["describeTool(name)\n→ short description string"]
         mh["makeHandler(op)\n→ async (args) → CallToolResult"]
@@ -106,7 +106,7 @@ flowchart TD
     tn & is & dt & mh & rs --> call
 ```
 
-**Tool naming rule (DEC-1):** `ilovepdf_` + operation name with every `-` replaced by `_`. No exceptions or manual overrides in v1.
+**Tool naming rule (DEC-1):** the operation name with every `-` replaced by `_`. Exceptions via `op.toolName`: `watermark_pdf`, `pagenumber_pdf` and `ocr_pdf` (collision risk / verb-first consistency), plus `unlock_pdf` once `unlock` is re-enabled.
 
 ---
 
@@ -116,26 +116,26 @@ Sourced directly from `src/domain/operations.ts`. `requiresSharedTask` means all
 
 | Operation name | MCP tool name | Purpose | `requiresSharedTask` | `producesArchive` |
 |---|---|---|:---:|:---:|
-| `compress-pdf` | `ilovepdf_compress_pdf` | Reduce PDF file size while preserving quality | — | — |
-| `pdf-to-jpg` | `ilovepdf_pdf_to_jpg` | Convert PDF pages to JPEG images | — | ✓ |
-| `image-to-pdf` | `ilovepdf_image_to_pdf` | Convert images (JPG, PNG, TIFF) to PDF | ✓ | — |
-| `office-to-pdf` | `ilovepdf_office_to_pdf` | Convert Word, Excel, and PowerPoint files to PDF | — | — |
-| `merge-pdf` | `ilovepdf_merge_pdf` | Combine multiple PDF files into one | ✓ | — |
-| `split-pdf` | `ilovepdf_split_pdf` | Split a PDF into multiple files by page range or chunks | — | ✓ |
-| `watermark` | `ilovepdf_watermark` | Add a text or image watermark to a PDF | — | — |
-| `pagenumber` | `ilovepdf_pagenumber` | Add page numbers to a PDF | — | — |
-| `pdf-ocr` | `ilovepdf_pdf_ocr` | Extract text from scanned PDFs using OCR | — | — |
+| `compress-pdf` | `compress_pdf` | Reduce PDF file size while preserving quality | — | — |
+| `pdf-to-jpg` | `pdf_to_jpg` | Convert PDF pages to JPEG images | — | ✓ |
+| `image-to-pdf` | `image_to_pdf` | Convert images (JPG, PNG, TIFF) to PDF | ✓ | — |
+| `office-to-pdf` | `office_to_pdf` | Convert Word, Excel, and PowerPoint files to PDF | — | — |
+| `merge-pdf` | `merge_pdf` | Combine multiple PDF files into one | ✓ | — |
+| `split-pdf` | `split_pdf` | Split a PDF into multiple files by page range or chunks | — | ✓ |
+| `watermark` | `watermark_pdf` | Add a text or image watermark to a PDF | — | — |
+| `pagenumber` | `pagenumber_pdf` | Add page numbers to a PDF | — | — |
+| `pdf-ocr` | `ocr_pdf` | Extract text from scanned PDFs using OCR | — | — |
 
 > **`unlock` is TEMPORARILY DISABLED.** Its logic is preserved but commented out
 > in the source and it is not registered as an MCP tool. When re-enabled it will
-> appear as `ilovepdf_unlock` and carry `mustBeDirect: true`, forcing the DIRECT
+> appear as `unlock_pdf` (via `toolName` override) and carry `mustBeDirect: true`, forcing the DIRECT
 > execution path in the executor regardless of the task tool assigned at upload time.
 
 ---
 
 ## 5. Request lifecycle sequence
 
-A `tools/call` for `ilovepdf_compress_pdf` flows through the following steps. Auth errors trigger a re-auth-once retry; transient 5xx errors (502/503/504) trigger a single 500 ms delay and retry; the entire upload flow is retried up to 2 additional times on bad regional nodes (ERR-4, ERR-5, ERR-6).
+A `tools/call` for `compress_pdf` flows through the following steps. Auth errors trigger a re-auth-once retry; transient 5xx errors (502/503/504) trigger a single 500 ms delay and retry; the entire upload flow is retried up to 2 additional times on bad regional nodes (ERR-4, ERR-5, ERR-6).
 
 ```mermaid
 sequenceDiagram

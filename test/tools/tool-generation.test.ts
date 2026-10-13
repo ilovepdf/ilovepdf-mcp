@@ -24,7 +24,7 @@ const { STUB_OP_NAME, STUB_TOOL_NAME } = vi.hoisted(() => {
   const name = 'stub-test-op';
   return {
     STUB_OP_NAME: name,
-    STUB_TOOL_NAME: `iLovePDF_${name.replace(/-/g, '_')}`,
+    STUB_TOOL_NAME: `${name.replace(/-/g, '_')}`,
   };
 });
 
@@ -198,26 +198,26 @@ describe('registerAllTools — tool names (TOOL-2 / DEC-1)', () => {
 
   it('tool names for the 9 real ops match the exact DEC-1 set', () => {
     const EXPECTED = [
-      'iLovePDF_compress_pdf',
-      'iLovePDF_pdf_to_jpg',
-      'iLovePDF_image_to_pdf',
-      'iLovePDF_office_to_pdf',
-      'iLovePDF_merge_pdf',
-      'iLovePDF_split_pdf',
-      // 'iLovePDF_unlock', // TEMPORARILY DISABLED — re-enable to publish.
-      'iLovePDF_watermark',
-      'iLovePDF_pagenumber',
-      'iLovePDF_pdf_ocr',
+      'compress_pdf',
+      'pdf_to_jpg',
+      'image_to_pdf',
+      'office_to_pdf',
+      'merge_pdf',
+      'split_pdf',
+      // 'unlock_pdf', // TEMPORARILY DISABLED — re-enable to publish.
+      'watermark_pdf',
+      'pagenumber_pdf',
+      'ocr_pdf',
     ];
     for (const name of EXPECTED) {
       expect(Object.keys(tools)).toContain(name);
     }
   });
 
-  it('all tool names match ^iLovePDF_[a-z_]+$', () => {
+  it('all tool names match ^[a-z_]+$', () => {
     for (const name of Object.keys(tools)) {
       expect(name, `tool name "${name}" must match pattern`).toMatch(
-        /^iLovePDF_[a-z_]+$/
+        /^[a-z_]+$/
       );
     }
   });
