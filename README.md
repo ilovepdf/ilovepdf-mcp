@@ -48,22 +48,22 @@ All file access is deny-by-default. Inputs and outputs must resolve to a path in
 
 | Tool name | Description |
 | --- | --- |
-| `ilovepdf_compress_pdf` | Compress a PDF to reduce file size |
-| `ilovepdf_pdf_to_jpg` | Convert PDF pages to JPEG images (output: `.zip`) |
-| `ilovepdf_image_to_pdf` | Convert JPG/PNG/TIFF images to PDF |
-| `ilovepdf_office_to_pdf` | Convert Word, Excel, or PowerPoint to PDF |
-| `ilovepdf_merge_pdf` | Combine multiple PDFs into one |
-| `ilovepdf_split_pdf` | Split a PDF by page range or fixed chunks (output: `.zip`) |
-| `ilovepdf_watermark` | Add a text or image watermark to a PDF |
-| `ilovepdf_pagenumber` | Add page numbers to a PDF |
-| `ilovepdf_pdf_ocr` | Extract text from scanned PDFs using OCR |
+| `compress_pdf` | Compress a PDF to reduce file size |
+| `pdf_to_jpg` | Convert PDF pages to JPEG images (output: `.zip`) |
+| `image_to_pdf` | Convert JPG/PNG/TIFF images to PDF |
+| `office_to_pdf` | Convert Word, Excel, or PowerPoint to PDF |
+| `merge_pdf` | Combine multiple PDFs into one |
+| `split_pdf` | Split a PDF by page range or fixed chunks (output: `.zip`) |
+| `watermark_pdf` | Add a text or image watermark to a PDF |
+| `pagenumber_pdf` | Add page numbers to a PDF |
+| `ocr_pdf` | Extract text from scanned PDFs using OCR |
 
 <!--
 Temporarily disabled — re-enable this row when the unlock tool is published again:
-| `ilovepdf_unlock` | Remove password and permission restrictions from a PDF via iLovePDF (owner-restricted PDFs are unlocked regardless of the supplied password) |
+| `unlock_pdf` | Remove password and permission restrictions from a PDF via iLovePDF (owner-restricted PDFs are unlocked regardless of the supplied password) |
 -->
 
-> **Multi-file outputs:** `ilovepdf_split_pdf` and `ilovepdf_pdf_to_jpg` return multiple files. The server saves them as a single `.zip` archive — it does **not** extract the archive automatically.
+> **Multi-file outputs:** `split_pdf` and `pdf_to_jpg` return multiple files. The server saves them as a single `.zip` archive — it does **not** extract the archive automatically.
 
 ## Client wiring
 

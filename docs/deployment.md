@@ -119,9 +119,9 @@ The core (`domain/`, `contract/`, `core/`, `lib/`) stays untouched. Only the edg
 Distilled from the MCP spec, Anthropic's tool-design guidance, and security write-ups
 (see Sources):
 
-- **Tool design** — one focused capability per tool, namespaced names, unambiguous
+- **Tool design** — one focused capability per tool, verb_noun snake_case names, unambiguous
   params, descriptions that say when *not* to use a tool. (Our registry-driven
-  `ilovepdf_*` tools already follow this.)
+  `compress_pdf`-style tools already follow this.)
 - **stdout discipline** — stderr-only logging; nothing but JSON-RPC on stdout.
 - **Filesystem least privilege** — directory allowlist + path canonicalization,
   reject `..` traversal and symlink escapes (see `docs/security.md`, `FIO-*`).

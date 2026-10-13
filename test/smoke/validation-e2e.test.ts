@@ -177,7 +177,7 @@ describe('validation-e2e (real server path — SDK schema + handler)', () => {
       // validates the .pdf extension, then validateOptions fires on the
       // invalid compression_level value — no API call is ever made.
       const result = await client.callTool({
-        name: 'iLovePDF_compress_pdf',
+        name: 'compress_pdf',
         arguments: {
           sources: [samplePdf],
           options: { compression_level: 'ultra' },
@@ -202,7 +202,7 @@ describe('validation-e2e (real server path — SDK schema + handler)', () => {
       //
       // This test uses a URL source and has no dependency on any local file.
       const result = await client.callTool({
-        name: 'iLovePDF_compress_pdf',
+        name: 'compress_pdf',
         arguments: {
           sources: ['http://[::ffff:169.254.169.254]/doc.pdf'],
         },
