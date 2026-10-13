@@ -18,6 +18,7 @@
 
 import type { OperationName } from '../domain/operation-types.js';
 import { OPERATION_NAMES, specFor } from '../domain/operations.js';
+import { toolName } from './tool-name.js';
 
 // ---------------------------------------------------------------------------
 // Per-operation capability lines (client-agnostic, no widget language)
@@ -61,12 +62,11 @@ function inputClause(op: OperationName): string {
 
 export const UNSUPPORTED_OPERATION_GUIDANCE = `### Requests for an unsupported operation (IMPORTANT)
 
-The table above is the COMPLETE list of supported operations. If the user asks for a PDF
-operation that is NOT in that table (e.g. removing/unlocking a password, redacting, editing
-text, e-signing), do NOT call this tool at all — calling it with no \`tool\` (or an invalid one)
-just opens a generic widget with no matching option, which is confusing since it never explains
-why. Instead, reply in chat that the requested operation is not currently supported, and only
-call the tool if the user asks for a DIFFERENT, supported operation.
+The list above is the COMPLETE set of supported operations. If the user asks for a PDF
+operation that is NOT in that list (e.g. removing/unlocking a password, redacting, editing
+text, e-signing), do NOT call any of these tools. Instead, reply in chat that the requested
+operation is not currently supported, and only call a tool if the user asks for a DIFFERENT,
+supported operation.
 
 If the operation is supported on ilovepdf.com, suggest the user visit https://www.ilovepdf.com
 to perform that task directly.
@@ -104,9 +104,11 @@ export function describeTool(op: OperationName): string {
   return `${capability} ${inputClause(op)}`;
 }
 
-/** One line per registered operation: "- <label>: <capability sentence>". */
+/** One line per registered operation: "- <tool_name> (<label>): <capability sentence>". */
 function operationsTable(): string {
-  return OPERATION_NAMES.map(name => `- ${specFor(name).label}: ${CAPABILITY[name]}`).join('\n');
+  return OPERATION_NAMES.map(
+    name => `- ${toolName(specFor(name))} (${specFor(name).label}): ${CAPABILITY[name]}`
+  ).join('\n');
 }
 
 /**
