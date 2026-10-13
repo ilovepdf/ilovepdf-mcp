@@ -128,6 +128,7 @@ export const OPERATIONS = {
    * 'unlock': {
    *   name: 'unlock',
    *   apiTool: 'unlock',
+   *   toolName: 'unlock_pdf',
    *   label: 'Unlock PDF',
    *   description: 'Remove a known password from a PDF.',
    *   acceptedExtensions: ['.pdf'],
@@ -141,6 +142,7 @@ export const OPERATIONS = {
   'watermark': {
     name: 'watermark',
     apiTool: 'watermark',
+    toolName: 'watermark_pdf',
     label: 'Add Watermark',
     description: 'Add a text or image watermark to a PDF.',
     acceptedExtensions: ['.pdf'],
@@ -166,6 +168,7 @@ export const OPERATIONS = {
   'pagenumber': {
     name: 'pagenumber',
     apiTool: 'pagenumber',
+    toolName: 'pagenumber_pdf',
     label: 'Add Page Numbers',
     description: 'Add page numbers to a PDF.',
     acceptedExtensions: ['.pdf'],
@@ -189,6 +192,7 @@ export const OPERATIONS = {
   'pdf-ocr': {
     name: 'pdf-ocr',
     apiTool: 'pdfocr',
+    toolName: 'ocr_pdf',
     label: 'OCR PDF',
     description: 'Extract text from scanned PDFs using OCR.',
     acceptedExtensions: ['.pdf'],
